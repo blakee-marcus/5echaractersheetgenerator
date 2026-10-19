@@ -5,9 +5,15 @@ A lightweight Next.js project for validating D&D 5e character data and generatin
 ## Current workflow
 
 Open [http://localhost:3000](http://localhost:3000) to edit the preloaded
-example character JSON and choose **Generate PDF**. The browser submits the
-JSON to the local API and downloads an editable three-page character sheet
-without navigating away.
+example through the guided identity, ability, saving-throw, and combat fields,
+then choose **Generate PDF**. The browser submits the canonical character to
+the local API and downloads an editable three-page character sheet without
+navigating away.
+
+The **Advanced JSON** mode still exposes the complete character contract. JSON
+changes remain an isolated draft until they pass the existing Zod schema and
+are applied (or generated). Invalid drafts survive mode changes without
+overwriting guided values.
 
 The application includes:
 
@@ -19,15 +25,17 @@ The application includes:
 - a 256 KiB request limit enforced before PDF generation;
 - structured API and browser errors that preserve issue codes and JSON-pointer
   paths;
-- a client-side JSON editor with a realistic example and downloadable PDF
-  output.
+- a responsive guided editor for identity, abilities, saving throws, and
+  combat values;
+- an advanced JSON editor with explicit, schema-backed synchronization; and
+- browser PDF generation with accessible progress and error feedback.
 
 The template lives at `assets/5E_CharacterSheet_Fillable.pdf`. Mapping and inspection notes live in `docs/`.
 
 The generator validates supported structure and basic numeric integrity. It
 does not calculate derived values or validate D&D gameplay legality. Accounts,
-persistence, structured character-building forms, and ruleset automation are
-outside the current scope.
+persistence, attacks/equipment forms, narrative/spell forms, and ruleset
+automation remain outside the current implemented slice.
 
 ## HTTP API
 
@@ -81,7 +89,8 @@ npm run build
 ```
 
 The test suite covers the schema, mapping, PDF service, HTTP route, example
-fixture, and JSON-editor request/download behavior.
+fixture, immutable guided-form updates, JSON synchronization, accessible error
+focus, request handling, and browser-download behavior.
 
 The production build can be exercised locally with:
 
