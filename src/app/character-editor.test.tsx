@@ -34,7 +34,7 @@ afterEach(() => {
 });
 
 describe("CharacterEditor", () => {
-  it("generates a PDF from guided identity, ability, and combat changes", async () => {
+  it("generates and downloads a PDF from guided changes across P2 sections", async () => {
     fetchMock.mockResolvedValue({
       ok: true,
       blob: async () => new Blob(["pdf"], { type: "application/pdf" }),
@@ -51,6 +51,31 @@ describe("CharacterEditor", () => {
     fireEvent.change(screen.getByRole("spinbutton", { name: "Armor class" }), {
       target: { value: "17" },
     });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Arcana bonus" }), {
+      target: { value: "9" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add attack" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Attack 3 name" }), {
+      target: { value: "Quarterstaff" },
+    });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Gold pieces" }), {
+      target: { value: "125" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Inventory item 1" }), {
+      target: { value: "Silvered dagger" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Class features" }), {
+      target: { value: "Portent" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Ideals" }), {
+      target: { value: "Truth before comfort" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Height" }), {
+      target: { value: "5 ft 10 in" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Character history" }), {
+      target: { value: "Mapped from the guided editor" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Generate PDF" }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
@@ -59,6 +84,14 @@ describe("CharacterEditor", () => {
     expect(submitted.identity.characterName).toBe("Seraphine Vale");
     expect(submitted.abilities.intelligence.score).toBe(20);
     expect(submitted.combat.armorClass).toBe(17);
+    expect(submitted.skills.arcana).toEqual({ bonus: 9, proficient: true });
+    expect(submitted.attacks[2]).toEqual({ name: "Quarterstaff" });
+    expect(submitted.equipment.currency.gold).toBe(125);
+    expect(submitted.equipment.inventory[0]).toBe("Silvered dagger");
+    expect(submitted.features.classFeatures).toBe("Portent");
+    expect(submitted.personality.ideals).toBe("Truth before comfort");
+    expect(submitted.appearance.height).toBe("5 ft 10 in");
+    expect(submitted.backstory.history).toBe("Mapped from the guided editor");
     expect(submitted.spellcasting).toEqual(exampleCharacter.spellcasting);
     expect(createObjectUrlMock).toHaveBeenCalledTimes(1);
     expect(anchorClickMock).toHaveBeenCalledTimes(1);
@@ -135,6 +168,17 @@ describe("CharacterEditor", () => {
           value: JSON.stringify({
             identity: { characterName: "Applied JSON" },
             combat: { armorClass: 18 },
+            skills: { stealth: { bonus: 12, proficient: true } },
+            attacks: [{ name: "JSON Blade", attackBonus: 7 }],
+            equipment: {
+              currency: { gold: 99 },
+              inventory: ["JSON pack"],
+              languages: ["Elvish"],
+            },
+            features: { classFeatures: "JSON Portent" },
+            personality: { ideals: "JSON truth" },
+            appearance: { eyes: "JSON violet" },
+            backstory: { history: "JSON history" },
           }),
         },
       },
@@ -150,6 +194,41 @@ describe("CharacterEditor", () => {
       screen.getByRole<HTMLInputElement>("spinbutton", { name: "Armor class" })
         .value,
     ).toBe("18");
+    expect(
+      screen.getByRole<HTMLInputElement>("spinbutton", { name: "Stealth bonus" })
+        .value,
+    ).toBe("12");
+    expect(
+      screen.getByRole<HTMLInputElement>("checkbox", {
+        name: "Stealth proficient",
+      }).checked,
+    ).toBe(true);
+    expect(
+      screen.getByRole<HTMLInputElement>("textbox", { name: "Attack 1 name" })
+        .value,
+    ).toBe("JSON Blade");
+    expect(
+      screen.getByRole<HTMLInputElement>("spinbutton", { name: "Gold pieces" })
+        .value,
+    ).toBe("99");
+    expect(
+      screen.getByRole<HTMLInputElement>("textbox", { name: "Inventory item 1" })
+        .value,
+    ).toBe("JSON pack");
+    expect(
+      screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Class features" })
+        .value,
+    ).toBe("JSON Portent");
+    expect(
+      screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Ideals" }).value,
+    ).toBe("JSON truth");
+    expect(
+      screen.getByRole<HTMLInputElement>("textbox", { name: "Eyes" }).value,
+    ).toBe("JSON violet");
+    expect(
+      screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Character history" })
+        .value,
+    ).toBe("JSON history");
   });
 
   it("renders structured API capacity errors without starting a download", async () => {

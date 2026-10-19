@@ -51,6 +51,8 @@ const ATTACK_ROWS = [
   { name: "Wpn Name 3", bonus: "Wpn3 AtkBonus  ", damage: "Wpn3 Damage " },
 ] as const;
 
+export const ATTACK_PDF_CAPACITY = ATTACK_ROWS.length;
+
 const range = (start: number, end: number): number[] =>
   Array.from({ length: end - start + 1 }, (_, index) => start + index);
 const spellFields = (numbers: readonly number[]): string[] =>

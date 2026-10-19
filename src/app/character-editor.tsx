@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { CharacterSheet } from "../domain/character-sheet";
 import {
   applyJsonDraft,
+  type CharacterChange,
   type EditorIssue,
 } from "./character-editor-state";
 import { GuidedCharacterForm } from "./guided-character-form";
@@ -58,12 +59,18 @@ export function CharacterEditor({ initialCharacter }: CharacterEditorProps) {
     setIssues([]);
   }
 
-  function updateCharacter(nextCharacter: CharacterSheet) {
-    setCharacter(nextCharacter);
-    if (!jsonDirty) setJsonDraft(formatCharacter(nextCharacter));
-    setIssues([]);
-    setStatus("");
-  }
+  const updateCharacter = useCallback(
+    (change: CharacterChange) => {
+      setCharacter((current) => {
+        const next = typeof change === "function" ? change(current) : change;
+        if (!jsonDirty) setJsonDraft(formatCharacter(next));
+        return next;
+      });
+      setIssues([]);
+      setStatus("");
+    },
+    [jsonDirty],
+  );
 
   function handleJsonChange(value: string) {
     setJsonDraft(value);
@@ -143,7 +150,7 @@ export function CharacterEditor({ initialCharacter }: CharacterEditorProps) {
   }
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+    <main className="mx-auto min-w-0 w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
       <a
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-[var(--foreground)] focus:px-4 focus:py-2 focus:text-[var(--background)]"
         href="#character-editor-content"

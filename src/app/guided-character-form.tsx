@@ -1,10 +1,7 @@
 "use client";
 
-import type { ChangeEvent } from "react";
-
 import type { CharacterSheet } from "../domain/character-sheet";
 import {
-  parseOptionalInteger,
   updateAbility,
   updateAbilitySavingThrow,
   updateCombat,
@@ -14,6 +11,21 @@ import {
   updateIdentity,
   updateTopLevel,
 } from "./character-editor-state";
+import {
+  CheckboxField,
+  fieldsetClass,
+  NumberField,
+  TextField,
+} from "./character-form-controls";
+import {
+  AppearanceSection,
+  AttacksSection,
+  BackstorySection,
+  EquipmentSection,
+  FeaturesSection,
+  PersonalitySection,
+  SkillsSection,
+} from "./guided-character-details";
 
 interface GuidedCharacterFormProps {
   character: CharacterSheet;
@@ -31,19 +43,39 @@ const abilities: readonly { key: AbilityName; label: string }[] = [
   { key: "charisma", label: "Charisma" },
 ];
 
-const inputClass =
-  "min-h-11 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 font-sans text-base text-[var(--foreground)] shadow-sm outline-none transition focus:border-[var(--focus)] focus:ring-2 focus:ring-[var(--focus)]/30";
-const fieldsetClass =
-  "rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm sm:p-6";
-const labelClass = "block font-sans text-sm font-bold text-[var(--foreground)]";
-
 export function GuidedCharacterForm({
   character,
   onChange,
 }: GuidedCharacterFormProps) {
   return (
     <div className="space-y-8">
-      <fieldset className={fieldsetClass}>
+      <nav
+        className="flex gap-2 overflow-x-auto pb-1 font-sans text-sm"
+        aria-label="Character sections"
+      >
+        {[
+          ["identity", "Identity"],
+          ["abilities", "Abilities"],
+          ["skills", "Skills"],
+          ["combat", "Combat"],
+          ["attacks", "Attacks"],
+          ["equipment", "Equipment"],
+          ["features", "Features"],
+          ["personality", "Personality"],
+          ["appearance", "Appearance"],
+          ["backstory", "Backstory"],
+        ].map(([id, label]) => (
+          <a
+            key={id}
+            className="min-h-11 shrink-0 rounded-md border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 font-bold transition hover:border-[var(--accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
+            href={`#${id}`}
+          >
+            {label}
+          </a>
+        ))}
+      </nav>
+
+      <fieldset id="identity" className={fieldsetClass}>
         <legend className="px-2 font-sans text-xl font-extrabold">Identity</legend>
         <p className="mt-1 font-sans text-sm text-[var(--muted)]">
           Enter the values exactly as they should appear on the character sheet.
@@ -132,7 +164,7 @@ export function GuidedCharacterForm({
         </div>
       </fieldset>
 
-      <fieldset className={fieldsetClass}>
+      <fieldset id="abilities" className={fieldsetClass}>
         <legend className="px-2 font-sans text-xl font-extrabold">
           Abilities and saving throws
         </legend>
@@ -202,7 +234,9 @@ export function GuidedCharacterForm({
         </div>
       </fieldset>
 
-      <fieldset className={fieldsetClass}>
+      <SkillsSection character={character} onChange={onChange} />
+
+      <fieldset id="combat" className={fieldsetClass}>
         <legend className="px-2 font-sans text-xl font-extrabold">Combat</legend>
         <p className="mt-1 font-sans text-sm text-[var(--muted)]">
           Supply combat values directly; no ruleset calculations are performed.
@@ -297,108 +331,13 @@ export function GuidedCharacterForm({
           />
         </div>
       </fieldset>
+
+      <AttacksSection character={character} onChange={onChange} />
+      <EquipmentSection character={character} onChange={onChange} />
+      <FeaturesSection character={character} onChange={onChange} />
+      <PersonalitySection character={character} onChange={onChange} />
+      <AppearanceSection character={character} onChange={onChange} />
+      <BackstorySection character={character} onChange={onChange} />
     </div>
-  );
-}
-
-interface TextFieldProps {
-  id: string;
-  label: string;
-  value: string | undefined;
-  placeholder?: string;
-  onChange: (value: string | undefined) => void;
-}
-
-function TextField({
-  id,
-  label,
-  value,
-  placeholder,
-  onChange,
-}: TextFieldProps) {
-  return (
-    <div>
-      <label className={labelClass} htmlFor={id}>
-        {label}
-      </label>
-      <input
-        className={`${inputClass} mt-1`}
-        id={id}
-        type="text"
-        placeholder={placeholder}
-        value={value ?? ""}
-        onChange={(event) => onChange(event.target.value || undefined)}
-      />
-    </div>
-  );
-}
-
-interface NumberFieldProps {
-  id: string;
-  label: string;
-  value: number | undefined;
-  min?: number;
-  max?: number;
-  onChange: (value: number | undefined) => void;
-}
-
-function NumberField({
-  id,
-  label,
-  value,
-  min,
-  max,
-  onChange,
-}: NumberFieldProps) {
-  return (
-    <div>
-      <label className={labelClass} htmlFor={id}>
-        {label}
-      </label>
-      <input
-        className={`${inputClass} mt-1`}
-        id={id}
-        type="number"
-        step={1}
-        min={min}
-        max={max}
-        value={value ?? ""}
-        onChange={(event) => onChange(parseOptionalInteger(event.target.value))}
-      />
-    </div>
-  );
-}
-
-interface CheckboxFieldProps {
-  id: string;
-  label: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}
-
-function CheckboxField({
-  id,
-  label,
-  checked,
-  onChange,
-}: CheckboxFieldProps) {
-  function handleChange(event: ChangeEvent<HTMLInputElement>) {
-    onChange(event.target.checked);
-  }
-
-  return (
-    <label
-      className="flex min-h-11 items-center gap-3 rounded-md border border-[var(--border)] px-3 py-2 font-sans text-sm font-bold"
-      htmlFor={id}
-    >
-      <input
-        className="size-5 accent-[var(--accent-strong)]"
-        id={id}
-        type="checkbox"
-        checked={checked}
-        onChange={handleChange}
-      />
-      {label}
-    </label>
   );
 }

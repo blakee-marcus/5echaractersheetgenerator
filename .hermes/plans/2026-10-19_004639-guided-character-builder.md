@@ -22,6 +22,8 @@
 
 - `src/app/character-editor.tsx`: state owner, mode switching, JSON draft lifecycle, API submission, download, top-level feedback.
 - `src/app/guided-character-form.tsx`: guided section composition and accessible field controls.
+- `src/app/guided-character-details.tsx`: skills, repeatable attacks, equipment, currency, and language sections.
+- `src/app/character-form-controls.tsx`: shared labeled form primitives and focus styling.
 - `src/app/character-editor-state.ts`: immutable update helpers, numeric parsing, schema-backed JSON application, and field-path utilities.
 - `src/app/editor-feedback.tsx`: API and schema issue rendering plus focusable error summary.
 - `src/domain/character-sheet.ts`: existing schema/type only; no parallel form schema.
@@ -145,11 +147,30 @@ Support currency, inventory lines, proficiencies, and languages using the existi
 
 **Gate:** Guided attacks/equipment generate and reopen correctly; JSON parity remains green.
 
+### Gate 2 completion — 2026-10-19
+
+- All 18 explicit skill bonus/proficiency pairs are editable without calculation.
+- Attacks support add/edit/remove, expose the three-row PDF limit before submission, and continue to surface overflow from Advanced JSON.
+- Currency, inventory, other proficiencies, and languages use the existing schema representations.
+- Canonical guided state and Advanced JSON round-trip without section-level models.
+- Chrome verification passed at desktop and 390 CSS pixels with keyboard traversal, no document overflow, API-backed download, and no console errors.
+- The downloaded three-page PDF was reopened with `pdf-lib`; edited Arcana, attack, currency, inventory, proficiency, and language fields matched the guided values.
+- Automated gate: 83 tests passed; ESLint and the production build passed.
+
 ---
 
 ## Gate 3 — Features, roleplay, and background
 
 Add personality, features, appearance, and backstory fields. Do not expose `appearance.description` because the PDF mapper rejects it. Add overflow-aware feedback and browser verification for representative narrative fields.
+
+### Gate 3 completion — 2026-10-19
+
+- Features, personality, appearance, and backstory are integrated into the guided editor using the canonical `CharacterSheet` state.
+- Advanced JSON and guided editing preserve all four sections bidirectionally without duplicate personality/backstory controls.
+- Representative values reach their existing PDF fields; `appearance.description` remains Advanced-JSON-only and produces the mapper's explicit unsupported-property error.
+- Chrome verification passed at desktop and 390 CSS pixels, including API-backed PDF download and reopened field-value checks.
+- The test suite was consolidated around distinct behavior and failure modes rather than field count.
+- Automated gate: 84 tests passed; ESLint, TypeScript, and the production build passed.
 
 ---
 

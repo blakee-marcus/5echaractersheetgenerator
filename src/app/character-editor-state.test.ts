@@ -2,14 +2,26 @@ import { describe, expect, it } from "vitest";
 
 import { exampleCharacter } from "../fixtures/example-character";
 import {
+  addAttack,
+  addInventoryItem,
+  addLanguage,
   applyJsonDraft,
   parseOptionalInteger,
+  removeAttack,
+  removeInventoryItem,
+  removeLanguage,
   updateAbility,
   updateAbilitySavingThrow,
+  updateAttack,
   updateCombat,
+  updateCurrency,
   updateDeathSaves,
+  updateEquipmentText,
   updateHitPoints,
   updateIdentity,
+  updateInventoryItem,
+  updateLanguage,
+  updateSkill,
 } from "./character-editor-state";
 
 describe("character editor state", () => {
@@ -75,6 +87,66 @@ describe("character editor state", () => {
       },
       deathSaves: { successes: 2 },
     });
+  });
+
+  it("updates a skill without changing other sections", () => {
+    const updated = updateSkill(exampleCharacter, "arcana", {
+      bonus: 9,
+      proficient: false,
+    });
+
+    expect(updated.skills?.arcana).toEqual({ bonus: 9, proficient: false });
+    expect(updated.skills?.history).toEqual(exampleCharacter.skills.history);
+    expect(updated.attacks).toEqual(exampleCharacter.attacks);
+    expect(updated.spellcasting).toEqual(exampleCharacter.spellcasting);
+  });
+
+  it("adds, edits, and removes attacks while enforcing the PDF capacity", () => {
+    const withThird = addAttack(exampleCharacter);
+    const edited = updateAttack(withThird, 2, "name", "Quarterstaff");
+    const atCapacity = addAttack(edited);
+    const removed = removeAttack(atCapacity, 0);
+
+    expect(edited.attacks).toHaveLength(3);
+    expect(edited.attacks?.[2]).toEqual({ name: "Quarterstaff" });
+    expect(atCapacity).toBe(edited);
+    expect(removed.attacks).toEqual([
+      exampleCharacter.attacks[1],
+      { name: "Quarterstaff" },
+    ]);
+    expect(removed.equipment).toEqual(exampleCharacter.equipment);
+  });
+
+  it("updates currency, inventory, proficiencies, and languages immutably", () => {
+    const withCurrency = updateCurrency(exampleCharacter, "gold", 125);
+    const withProficiencies = updateEquipmentText(
+      withCurrency,
+      "otherProficiencies",
+      "Daggers and calligrapher's supplies",
+    );
+    const withInventory = addInventoryItem(withProficiencies);
+    const editedInventory = updateInventoryItem(
+      withInventory,
+      (withInventory.equipment?.inventory?.length ?? 1) - 1,
+      "Ink and quill",
+    );
+    const trimmedInventory = removeInventoryItem(editedInventory, 0);
+    const withLanguage = addLanguage(trimmedInventory);
+    const editedLanguage = updateLanguage(
+      withLanguage,
+      (withLanguage.equipment?.languages?.length ?? 1) - 1,
+      "Elvish",
+    );
+    const trimmedLanguage = removeLanguage(editedLanguage, 0);
+
+    expect(trimmedLanguage.equipment).toMatchObject({
+      currency: { gold: 125 },
+      otherProficiencies: "Daggers and calligrapher's supplies",
+      inventory: ["Component pouch", "Scholar's pack", "Ink and quill"],
+      languages: ["Infernal", "Draconic", "Elvish"],
+    });
+    expect(trimmedLanguage.skills).toEqual(exampleCharacter.skills);
+    expect(trimmedLanguage.personality).toEqual(exampleCharacter.personality);
   });
 
   it("applies valid JSON through the existing schema", () => {

@@ -110,4 +110,119 @@ describe("GuidedCharacterForm", () => {
       deathSaves: { successes: 2 },
     });
   });
+
+  it("updates a representative skill control and preserves unrelated state", () => {
+    render(<Harness />);
+
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Arcana bonus" }), {
+      target: { value: "9" },
+    });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Arcana proficient" }));
+
+    expect(currentCharacter().skills?.arcana).toEqual({
+      bonus: 9,
+      proficient: false,
+    });
+    expect(currentCharacter().skills?.history).toEqual(exampleCharacter.skills.history);
+    expect(currentCharacter().spellcasting).toEqual(exampleCharacter.spellcasting);
+  });
+
+  it("adds, edits, removes, and caps attacks at three PDF rows", () => {
+    render(<Harness />);
+
+    expect(screen.getAllByRole("group", { name: /Attack \d/ })).toHaveLength(2);
+    fireEvent.click(screen.getByRole("button", { name: "Add attack" }));
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Attack 3 name" }),
+      { target: { value: "Quarterstaff" } },
+    );
+
+    expect(currentCharacter().attacks).toHaveLength(3);
+    expect(currentCharacter().attacks?.[2]?.name).toBe("Quarterstaff");
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", { name: "Add attack" }).disabled,
+    ).toBe(true);
+    expect(
+      screen.getByRole("status", { name: "Attack capacity" }).textContent,
+    ).toContain("3 of 3 PDF attack rows used");
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove Dagger attack" }));
+    expect(currentCharacter().attacks).toEqual([
+      exampleCharacter.attacks[1],
+      { name: "Quarterstaff" },
+    ]);
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", { name: "Add attack" }).disabled,
+    ).toBe(false);
+  });
+
+  it("updates currency, inventory, proficiencies, and languages", () => {
+    render(<Harness />);
+
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Gold pieces" }), {
+      target: { value: "125" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Inventory item 1" }), {
+      target: { value: "Silvered dagger" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add inventory item" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Inventory item 4" }), {
+      target: { value: "Ink and quill" },
+    });
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Other proficiencies" }),
+      { target: { value: "Daggers and calligrapher's supplies" } },
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: "Language 2" }), {
+      target: { value: "Elvish" },
+    });
+
+    expect(currentCharacter().equipment).toMatchObject({
+      currency: { gold: 125 },
+      inventory: [
+        "Silvered dagger",
+        "Component pouch",
+        "Scholar's pack",
+        "Ink and quill",
+      ],
+      otherProficiencies: "Daggers and calligrapher's supplies",
+      languages: ["Common", "Elvish", "Draconic"],
+    });
+    expect(currentCharacter().personality).toEqual(exampleCharacter.personality);
+  });
+
+  it("updates representative descriptive fields without cross-section data loss", () => {
+    render(<Harness />);
+
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Class features" }),
+      { target: { value: "Arcane Recovery; Portent" } },
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: "Ideals" }), {
+      target: { value: "Knowledge should be shared" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Height" }), {
+      target: { value: "5 ft 9 in" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Character history" }), {
+      target: { value: "Raised among lighthouse keepers." },
+    });
+
+    const character = currentCharacter();
+    expect(character.features).toEqual({
+      ...exampleCharacter.features,
+      classFeatures: "Arcane Recovery; Portent",
+    });
+    expect(character.personality).toEqual({
+      ...exampleCharacter.personality,
+      ideals: "Knowledge should be shared",
+    });
+    expect(character.appearance).toEqual({ height: "5 ft 9 in" });
+    expect(character.backstory).toEqual({
+      ...exampleCharacter.backstory,
+      history: "Raised among lighthouse keepers.",
+    });
+    expect(character.identity).toEqual(exampleCharacter.identity);
+    expect(character.spellcasting).toEqual(exampleCharacter.spellcasting);
+  });
 });
