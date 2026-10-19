@@ -21,11 +21,11 @@
 - [x] Structured generation issues expose error codes and JSON-pointer paths.
 - [x] Existing suite passes: 52 tests.
 - [x] ESLint passes.
-- [ ] Existing implementation secured as an approved Git baseline.
-- [ ] HTTP generation endpoint implemented.
-- [ ] Browser JSON editor and PDF download implemented.
-- [ ] HTTP integration coverage implemented.
-- [ ] Complete browser workflow exercised.
+- [x] Existing implementation secured as an approved Git baseline.
+- [x] HTTP generation endpoint implemented.
+- [x] Browser JSON editor and PDF download implemented.
+- [x] HTTP integration coverage implemented.
+- [x] Complete browser workflow exercised.
 
 ## Non-goals for this milestone
 
@@ -301,20 +301,20 @@ Expected:
 
 This milestone is complete only when all boxes below are checked:
 
-- [ ] Existing 52-test engine baseline is committed with Blake's approval.
-- [ ] `POST /api/characters/generate` exists on the Node.js runtime.
-- [ ] Incoming body size is capped before PDF generation.
-- [ ] The route calls the existing generation service as the authoritative validation boundary.
-- [ ] Success returns a downloadable editable PDF with correct headers.
-- [ ] Malformed JSON, invalid character data, mapping overflow, oversized input, and unexpected failures have distinct tested responses.
-- [ ] Existing issue codes and JSON-pointer paths reach the browser unchanged.
-- [ ] The landing page contains a realistic preloaded example character.
-- [ ] Users can edit JSON, generate, and download without navigating away.
-- [ ] The downloaded file reopens as a valid three-page PDF with edited values.
-- [ ] Automated tests cover the HTTP endpoint, not only direct service calls.
-- [ ] `npm test`, `npm run lint`, and `npm run build` pass.
-- [ ] The real browser workflow is exercised successfully.
-- [ ] README accurately describes what is implemented and what remains out of scope.
+- [x] Existing 52-test engine baseline is committed with Blake's approval.
+- [x] `POST /api/characters/generate` exists on the Node.js runtime.
+- [x] Incoming body size is capped before PDF generation.
+- [x] The route calls the existing generation service as the authoritative validation boundary.
+- [x] Success returns a downloadable editable PDF with correct headers.
+- [x] Malformed JSON, invalid character data, mapping overflow, oversized input, and unexpected failures have distinct tested responses.
+- [x] Existing issue codes and JSON-pointer paths reach the browser unchanged.
+- [x] The landing page contains a realistic preloaded example character.
+- [x] Users can edit JSON, generate, and download without navigating away.
+- [x] The downloaded file reopens as a valid three-page PDF with edited values.
+- [x] Automated tests cover the HTTP endpoint, not only direct service calls.
+- [x] `npm test`, `npm run lint`, and `npm run build` pass.
+- [x] The real browser workflow is exercised successfully.
+- [x] README accurately describes what is implemented and what remains out of scope.
 
 ## Later roadmap—do not pull forward
 

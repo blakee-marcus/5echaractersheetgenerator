@@ -131,6 +131,123 @@ h1 {
   margin-top: clamp(4rem, 10vw, 8rem);
 }
 
+.generator {
+  margin-top: clamp(4rem, 10vw, 7rem);
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  box-shadow: 0 1.25rem 3rem rgb(32 26 22 / 9%);
+}
+
+.generator-heading {
+  max-width: 48rem;
+}
+
+.generator-heading h2 {
+  margin: 0;
+  font-size: clamp(1.75rem, 4vw, 2.75rem);
+  line-height: 1.1;
+}
+
+.generator-heading > p:last-child {
+  margin: 1rem 0 0;
+  color: var(--muted);
+}
+
+.generator form {
+  margin-top: 2rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.generator label {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-weight: 750;
+}
+
+.field-help {
+  margin: -0.25rem 0 0;
+  color: var(--muted);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.925rem;
+}
+
+.generator textarea {
+  width: 100%;
+  min-height: 34rem;
+  resize: vertical;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  color: var(--foreground);
+  background: var(--background);
+  font: 0.875rem/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", monospace;
+  tab-size: 2;
+}
+
+.generator textarea[aria-invalid="true"] {
+  border-color: var(--accent-strong);
+}
+
+.generator button {
+  justify-self: start;
+  min-width: 11rem;
+  min-height: 3rem;
+  padding: 0.75rem 1.25rem;
+  border: 0;
+  border-radius: 0.4rem;
+  color: white;
+  background: var(--accent-strong);
+  font: 750 1rem/1 ui-sans-serif, system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.generator button:hover:not(:disabled) {
+  background: var(--accent);
+}
+
+.generator button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.generator-message {
+  margin: 1rem 0 0;
+  padding: 1rem;
+  border-left: 0.3rem solid var(--focus);
+  background: var(--background);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.generator-message p {
+  margin: 0;
+}
+
+.generator-message p + p,
+.generator-message ul {
+  margin-top: 0.5rem;
+}
+
+.generator-message ul {
+  margin-bottom: 0;
+  padding-left: 1.5rem;
+}
+
+.generator-success {
+  border-left-color: #26734d;
+}
+
+.generator-error {
+  border-left-color: var(--accent-strong);
+}
+
+.generator-error code {
+  overflow-wrap: anywhere;
+  font-size: 0.9em;
+}
+
 .capabilities h2 {
   margin: 0 0 1.5rem;
   font-size: clamp(1.5rem, 4vw, 2rem);
@@ -177,6 +294,18 @@ footer {
 }
 
 @media (max-width: 42rem) {
+  .generator {
+    padding: 1rem;
+  }
+
+  .generator textarea {
+    min-height: 26rem;
+  }
+
+  .generator button {
+    width: 100%;
+  }
+
   .capabilities ul {
     grid-template-columns: 1fr;
   }

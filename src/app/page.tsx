@@ -1,3 +1,5 @@
+import { CharacterJsonGenerator } from "./character-json-generator";
+
 export default function Home() {
   return (
     <>
@@ -21,6 +23,8 @@ export default function Home() {
             automatically validated.
           </p>
         </section>
+
+        <CharacterJsonGenerator />
 
         <section className="capabilities" aria-labelledby="capabilities-title">
           <h2 id="capabilities-title">Built for reliable output</h2>
