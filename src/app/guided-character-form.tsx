@@ -41,6 +41,7 @@ interface GuidedCharacterFormProps {
 type AbilityName = keyof NonNullable<CharacterSheet["abilities"]>;
 
 const navItems = [
+  { id: "class", label: "Choose Class", icon: "Shield" },
   { id: "identity", label: "Identity", icon: "UserCircle" },
   { id: "abilities", label: "Abilities", icon: "Heart" },
   { id: "skills", label: "Skills", icon: "List" },
@@ -204,7 +205,7 @@ export function GuidedCharacterForm({
   character,
   onChange,
 }: GuidedCharacterFormProps) {
-  const [activeSection, setActiveSection] = useState<SectionId>("identity");
+  const [activeSection, setActiveSection] = useState<SectionId>("class");
   const [generationMethod, setGenerationMethod] = useState<GenerationMethod>(
     "manual",
   );
@@ -381,6 +382,13 @@ export function GuidedCharacterForm({
         Section {activeSectionIndex + 1} of {navItems.length}
       </p>
 
+      <div className={sectionPanelClass("class")} data-editor-section="class">
+      <ClassSelection
+        character={character}
+        onChange={onChange}
+      />
+      </div>
+
       <div className={sectionPanelClass("identity")} data-editor-section="identity">
       <fieldset id="identity" className={fieldsetClass}>
         <legend className="px-2 font-sans text-xl font-extrabold">Identity</legend>
@@ -395,10 +403,6 @@ export function GuidedCharacterForm({
             onChange={(value) =>
               onChange(updateIdentity(character, "characterName", value))
             }
-          />
-          <ClassSelection
-            character={character}
-            onChange={onChange}
           />
           <TextField
             id="identity-race"

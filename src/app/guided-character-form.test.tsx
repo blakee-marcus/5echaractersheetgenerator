@@ -40,26 +40,38 @@ describe("GuidedCharacterForm", () => {
     const sectionButtons = Array.from(
       sectionNavigation.querySelectorAll<HTMLButtonElement>("button"),
     );
-    expect(sectionButtons).toHaveLength(11);
+    expect(sectionButtons).toHaveLength(12);
 
+    const classPanel = document.querySelector<HTMLElement>(
+      '[data-editor-section="class"]',
+    );
     const identityPanel = document.querySelector<HTMLElement>(
       '[data-editor-section="identity"]',
     );
     const abilitiesPanel = document.querySelector<HTMLElement>(
       '[data-editor-section="abilities"]',
     );
-    expect(identityPanel?.className).not.toContain("hidden");
+    expect(classPanel?.className).not.toContain("hidden");
+    expect(identityPanel?.className).toContain("hidden");
     expect(abilitiesPanel?.className).toContain("hidden");
 
+    // Start on Class section, navigate to Identity
     fireEvent.change(screen.getByRole("textbox", { name: "Character name" }), {
       target: { value: "Seraphine Vale" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Abilities" }));
+    fireEvent.click(screen.getByRole("button", { name: "Identity" }));
 
+    expect(classPanel?.className).toContain("hidden");
+    expect(identityPanel?.className).not.toContain("hidden");
+    expect(screen.getByText("Section 2 of 12")).toBeTruthy();
+
+    // Navigate to Abilities
+    fireEvent.click(screen.getByRole("button", { name: "Abilities" }));
     expect(identityPanel?.className).toContain("hidden");
     expect(abilitiesPanel?.className).not.toContain("hidden");
-    expect(screen.getByText("Section 2 of 11")).toBeTruthy();
+    expect(screen.getByText("Section 3 of 12")).toBeTruthy();
 
+    // Navigate back to Identity - value should be preserved
     fireEvent.click(screen.getByRole("button", { name: "Identity" }));
     expect(
       screen.getByRole<HTMLInputElement>("textbox", { name: "Character name" })
