@@ -3,6 +3,7 @@
 import type { ChangeEvent } from "react";
 
 import { parseOptionalInteger } from "./character-editor-state";
+import * as Icons from "./icons";
 
 export const inputClass =
   "min-h-11 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 font-sans text-base text-[var(--foreground)] shadow-sm outline-none transition focus:border-[var(--focus)] focus:ring-2 focus:ring-[var(--focus)]/30";
@@ -86,6 +87,9 @@ interface NumberFieldProps {
   value: number | undefined;
   min?: number;
   max?: number;
+  disabled?: boolean;
+  ariaInvalid?: boolean;
+  ariaDescribedBy?: string;
   onChange: (value: number | undefined) => void;
 }
 
@@ -95,6 +99,9 @@ export function NumberField({
   value,
   min,
   max,
+  disabled,
+  ariaInvalid,
+  ariaDescribedBy,
   onChange,
 }: NumberFieldProps) {
   return (
@@ -109,6 +116,9 @@ export function NumberField({
         step={1}
         min={min}
         max={max}
+        disabled={disabled}
+        aria-invalid={ariaInvalid || undefined}
+        aria-describedby={ariaDescribedBy}
         value={value ?? ""}
         onChange={(event) => onChange(parseOptionalInteger(event.target.value))}
       />
@@ -147,5 +157,40 @@ export function CheckboxField({
       />
       {label}
     </label>
+  );
+}
+
+interface IconButtonProps {
+  icon: keyof typeof Icons;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  "aria-label"?: string;
+}
+
+export function IconButton({
+  icon,
+  label,
+  onClick,
+  disabled,
+  "aria-label": ariaLabel,
+}: IconButtonProps) {
+  const IconComponent = Icons[icon];
+
+  return (
+    <button
+      className={secondaryButtonClass}
+      type="button"
+      disabled={disabled}
+      aria-label={ariaLabel ?? label}
+      onClick={onClick}
+    >
+      <IconComponent
+        className="size-4 shrink-0"
+        weight="regular"
+        strokeWidth={1.5}
+      />
+      <span className="font-sans text-sm">{label}</span>
+    </button>
   );
 }

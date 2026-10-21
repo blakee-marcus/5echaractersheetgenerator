@@ -45,9 +45,28 @@ describe("CharacterEditor", () => {
       target: { value: "Seraphine Vale" },
     });
     fireEvent.change(
-      screen.getByRole("spinbutton", { name: "Intelligence score" }),
-      { target: { value: "20" } },
+      screen.getByRole("combobox", {
+        name: "How would you like to determine your ability scores?",
+      }),
+      { target: { value: "standard-array" } },
     );
+    const generatedScores = [
+      [15, "strength"],
+      [14, "dexterity"],
+      [13, "constitution"],
+      [12, "intelligence"],
+      [10, "wisdom"],
+      [8, "charisma"],
+    ] as const;
+    for (const [score, ability] of generatedScores) {
+      fireEvent.change(
+        screen.getByRole("combobox", {
+          name: `Assign score ${score} to ability`,
+        }),
+        { target: { value: ability } },
+      );
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Apply scores" }));
     fireEvent.change(screen.getByRole("spinbutton", { name: "Armor class" }), {
       target: { value: "17" },
     });
@@ -76,13 +95,33 @@ describe("CharacterEditor", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "Character history" }), {
       target: { value: "Mapped from the guided editor" },
     });
+    fireEvent.change(screen.getByRole("textbox", { name: "Spellcasting class" }), {
+      target: { value: "Cleric" },
+    });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Level 2 slot total" }), {
+      target: { value: "3" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add level 2 spell" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Level 2 spell 1 name" }), {
+      target: { value: "Misty Step" },
+    });
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Level 2 spell 1 prepared" }),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Generate PDF" }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     const request = fetchMock.mock.calls[0]?.[1];
     const submitted = JSON.parse(String(request?.body));
     expect(submitted.identity.characterName).toBe("Seraphine Vale");
-    expect(submitted.abilities.intelligence.score).toBe(20);
+    expect(submitted.abilities).toMatchObject({
+      strength: { score: 15 },
+      dexterity: { score: 14 },
+      constitution: { score: 13 },
+      intelligence: { score: 12 },
+      wisdom: { score: 10 },
+      charisma: { score: 8 },
+    });
     expect(submitted.combat.armorClass).toBe(17);
     expect(submitted.skills.arcana).toEqual({ bonus: 9, proficient: true });
     expect(submitted.attacks[2]).toEqual({ name: "Quarterstaff" });
@@ -92,7 +131,11 @@ describe("CharacterEditor", () => {
     expect(submitted.personality.ideals).toBe("Truth before comfort");
     expect(submitted.appearance.height).toBe("5 ft 10 in");
     expect(submitted.backstory.history).toBe("Mapped from the guided editor");
-    expect(submitted.spellcasting).toEqual(exampleCharacter.spellcasting);
+    expect(submitted.spellcasting).toMatchObject({
+      class: "Cleric",
+      slots: { "2": { total: 3 } },
+      spells: { "2": [{ name: "Misty Step", prepared: true }] },
+    });
     expect(createObjectUrlMock).toHaveBeenCalledTimes(1);
     expect(anchorClickMock).toHaveBeenCalledTimes(1);
     expect(revokeObjectUrlMock).toHaveBeenCalledWith("blob:character-sheet");
@@ -179,6 +222,14 @@ describe("CharacterEditor", () => {
             personality: { ideals: "JSON truth" },
             appearance: { eyes: "JSON violet" },
             backstory: { history: "JSON history" },
+            spellcasting: {
+              class: "Druid",
+              ability: "WIS",
+              spellSaveDc: 16,
+              spellAttackBonus: 8,
+              slots: { "2": { total: 3, expended: 1 } },
+              spells: { "2": [{ name: "Moonbeam", prepared: true }] },
+            },
           }),
         },
       },
@@ -229,6 +280,23 @@ describe("CharacterEditor", () => {
       screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Character history" })
         .value,
     ).toBe("JSON history");
+    expect(
+      screen.getByRole<HTMLInputElement>("textbox", { name: "Spellcasting class" })
+        .value,
+    ).toBe("Druid");
+    expect(
+      screen.getByRole<HTMLInputElement>("spinbutton", { name: "Level 2 slot total" })
+        .value,
+    ).toBe("3");
+    expect(
+      screen.getByRole<HTMLInputElement>("textbox", { name: "Level 2 spell 1 name" })
+        .value,
+    ).toBe("Moonbeam");
+    expect(
+      screen.getByRole<HTMLInputElement>("checkbox", {
+        name: "Level 2 spell 1 prepared",
+      }).checked,
+    ).toBe(true);
   });
 
   it("renders structured API capacity errors without starting a download", async () => {

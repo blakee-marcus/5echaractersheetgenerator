@@ -8,7 +8,17 @@ describe("POST /api/characters/generate", () => {
     const request = new Request("http://localhost/api/characters/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ identity: { characterName: "API Character" } }),
+      body: JSON.stringify({
+        identity: { characterName: "API Character" },
+        abilities: {
+          strength: { score: 15 },
+          dexterity: { score: 14 },
+          constitution: { score: 13 },
+          intelligence: { score: 12 },
+          wisdom: { score: 10 },
+          charisma: { score: 8 },
+        },
+      }),
     });
 
     const response = await POST(request);
@@ -25,6 +35,12 @@ describe("POST /api/characters/generate", () => {
     expect(pdf.getForm().getTextField("CharacterName").getText()).toBe(
       "API Character",
     );
+    expect(pdf.getForm().getTextField("STR").getText()).toBe("15");
+    expect(pdf.getForm().getTextField("DEX").getText()).toBe("14");
+    expect(pdf.getForm().getTextField("CON").getText()).toBe("13");
+    expect(pdf.getForm().getTextField("INT").getText()).toBe("12");
+    expect(pdf.getForm().getTextField("WIS").getText()).toBe("10");
+    expect(pdf.getForm().getTextField("CHA").getText()).toBe("8");
   });
 
   it("rejects non-JSON request bodies", async () => {

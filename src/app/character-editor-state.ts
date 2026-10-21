@@ -2,7 +2,10 @@ import {
   characterSheetSchema,
   type CharacterSheet,
 } from "../domain/character-sheet";
-import { ATTACK_PDF_CAPACITY } from "../domain/pdf-field-mapping";
+import {
+  ATTACK_PDF_CAPACITY,
+  SPELL_PDF_CAPACITIES,
+} from "../domain/pdf-field-mapping";
 
 export interface EditorIssue {
   code: string;
@@ -35,6 +38,14 @@ type Skill = NonNullable<NonNullable<CharacterSheet["skills"]>[SkillName]>;
 type Attack = NonNullable<CharacterSheet["attacks"]>[number];
 type Equipment = NonNullable<CharacterSheet["equipment"]>;
 type Currency = NonNullable<Equipment["currency"]>;
+type Spellcasting = NonNullable<CharacterSheet["spellcasting"]>;
+type SpellcastingMetadataKey = "class" | "ability" | "spellSaveDc" | "spellAttackBonus";
+type SpellsByLevel = NonNullable<Spellcasting["spells"]>;
+export type SpellLevel = keyof SpellsByLevel;
+type Spell = NonNullable<SpellsByLevel[SpellLevel]>[number];
+type SlotsByLevel = NonNullable<Spellcasting["slots"]>;
+export type SpellSlotLevel = keyof SlotsByLevel;
+type SpellSlot = NonNullable<SlotsByLevel[SpellSlotLevel]>;
 
 export function parseOptionalInteger(value: string): number | undefined {
   if (value.trim() === "") return undefined;
@@ -307,6 +318,96 @@ export function removeLanguage(
       languages: character.equipment.languages.filter(
         (_language, languageIndex) => languageIndex !== index,
       ),
+    },
+  };
+}
+
+export function updateSpellcastingMetadata<K extends SpellcastingMetadataKey>(
+  character: CharacterSheet,
+  key: K,
+  value: Spellcasting[K],
+): CharacterSheet {
+  return {
+    ...character,
+    spellcasting: { ...character.spellcasting, [key]: value },
+  };
+}
+
+export function updateSpellSlot<K extends keyof SpellSlot>(
+  character: CharacterSheet,
+  level: SpellSlotLevel,
+  key: K,
+  value: SpellSlot[K],
+): CharacterSheet {
+  return {
+    ...character,
+    spellcasting: {
+      ...character.spellcasting,
+      slots: {
+        ...character.spellcasting?.slots,
+        [level]: { ...character.spellcasting?.slots?.[level], [key]: value },
+      },
+    },
+  };
+}
+
+export function addSpell(
+  character: CharacterSheet,
+  level: SpellLevel,
+): CharacterSheet {
+  const spells = character.spellcasting?.spells?.[level] ?? [];
+  const capacity = SPELL_PDF_CAPACITIES[Number(level)] ?? 0;
+  if (spells.length >= capacity) return character;
+  return {
+    ...character,
+    spellcasting: {
+      ...character.spellcasting,
+      spells: {
+        ...character.spellcasting?.spells,
+        [level]: [...spells, {}],
+      },
+    },
+  };
+}
+
+export function updateSpell<K extends keyof Spell>(
+  character: CharacterSheet,
+  level: SpellLevel,
+  index: number,
+  key: K,
+  value: Spell[K],
+): CharacterSheet {
+  const spells = character.spellcasting?.spells?.[level];
+  if (!spells?.[index]) return character;
+  return {
+    ...character,
+    spellcasting: {
+      ...character.spellcasting,
+      spells: {
+        ...character.spellcasting?.spells,
+        [level]: spells.map((spell, spellIndex) =>
+          spellIndex === index ? { ...spell, [key]: value } : spell,
+        ),
+      },
+    },
+  };
+}
+
+export function removeSpell(
+  character: CharacterSheet,
+  level: SpellLevel,
+  index: number,
+): CharacterSheet {
+  const spells = character.spellcasting?.spells?.[level];
+  if (!spells?.[index]) return character;
+  return {
+    ...character,
+    spellcasting: {
+      ...character.spellcasting,
+      spells: {
+        ...character.spellcasting?.spells,
+        [level]: spells.filter((_spell, spellIndex) => spellIndex !== index),
+      },
     },
   };
 }

@@ -19,8 +19,8 @@ import {
 import {
   CheckboxField,
   fieldsetClass,
+  IconButton,
   NumberField,
-  secondaryButtonClass,
   TextareaField,
   TextField,
 } from "./character-form-controls";
@@ -115,15 +115,12 @@ export function AttacksSection({ character, onChange }: SectionProps) {
           The PDF has three attack rows. Names are required before generation;
           bonuses, damage, type, and notes remain manual.
         </p>
-        <button
-          className={secondaryButtonClass}
-          type="button"
+        <IconButton
+          icon="Plus"
+          label="Add attack"
           disabled={atCapacity}
-          aria-describedby="attack-capacity"
           onClick={() => onChange(addAttack(character))}
-        >
-          Add attack
-        </button>
+        />
       </div>
       <p
         id="attack-capacity"
@@ -198,16 +195,11 @@ export function AttacksSection({ character, onChange }: SectionProps) {
                     }
                   />
                 </div>
-                <div className="flex items-end">
-                  <button
-                    className={`${secondaryButtonClass} w-full`}
-                    type="button"
-                    aria-label={removeLabel}
-                    onClick={() => onChange(removeAttack(character, index))}
-                  >
-                    Remove attack
-                  </button>
-                </div>
+                <IconButton
+                  icon="TrashSimple"
+                  label={removeLabel}
+                  onClick={() => onChange(removeAttack(character, index))}
+                />
               </div>
             </fieldset>
           );
@@ -257,13 +249,11 @@ export function EquipmentSection({ character, onChange }: SectionProps) {
           <h3 id="inventory-heading" className="font-sans text-lg font-extrabold">
             Inventory
           </h3>
-          <button
-            className={secondaryButtonClass}
-            type="button"
+          <IconButton
+            icon="Plus"
+            label="Add inventory item"
             onClick={() => onChange(addInventoryItem(character))}
-          >
-            Add inventory item
-          </button>
+          />
         </div>
         <div className="mt-3 space-y-3">
           {inventory.length === 0 ? (
@@ -283,14 +273,11 @@ export function EquipmentSection({ character, onChange }: SectionProps) {
                   onChange(updateInventoryItem(character, index, value ?? ""))
                 }
               />
-              <button
-                className={secondaryButtonClass}
-                type="button"
-                aria-label={`Remove inventory item ${index + 1}`}
+              <IconButton
+                icon="TrashSimple"
+                label={`Remove inventory item ${index + 1}`}
                 onClick={() => onChange(removeInventoryItem(character, index))}
-              >
-                Remove
-              </button>
+              />
             </div>
           ))}
         </div>
@@ -312,13 +299,11 @@ export function EquipmentSection({ character, onChange }: SectionProps) {
           <h3 id="languages-heading" className="font-sans text-lg font-extrabold">
             Languages
           </h3>
-          <button
-            className={secondaryButtonClass}
-            type="button"
+          <IconButton
+            icon="Plus"
+            label="Add language"
             onClick={() => onChange(addLanguage(character))}
-          >
-            Add language
-          </button>
+          />
         </div>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           {languages.length === 0 ? (
@@ -338,14 +323,11 @@ export function EquipmentSection({ character, onChange }: SectionProps) {
                   onChange(updateLanguage(character, index, value ?? ""))
                 }
               />
-              <button
-                className={secondaryButtonClass}
-                type="button"
-                aria-label={`Remove language ${index + 1}`}
+              <IconButton
+                icon="TrashSimple"
+                label={`Remove language ${index + 1}`}
                 onClick={() => onChange(removeLanguage(character, index))}
-              >
-                Remove
-              </button>
+              />
             </div>
           ))}
         </div>

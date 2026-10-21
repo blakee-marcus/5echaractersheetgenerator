@@ -100,6 +100,10 @@ const SPELL_ROWS: readonly { text: readonly string[]; checkboxes?: readonly stri
   },
 ];
 
+export const SPELL_PDF_CAPACITIES: readonly number[] = SPELL_ROWS.map(
+  ({ text }) => text.length,
+);
+
 function formatSigned(value: number): string {
   return value > 0 ? `+${value}` : String(value);
 }

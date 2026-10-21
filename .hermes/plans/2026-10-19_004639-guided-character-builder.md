@@ -178,6 +178,16 @@ Add personality, features, appearance, and backstory fields. Do not expose `appe
 
 Add spellcasting class, ability, save DC, attack bonus, slot totals/expended counts, and repeatable spells by level. Use capacity metadata derived from the existing mapper rather than a second handwritten limit table. Do not expose cantrip preparedness or per-spell notes where the mapper reports unsupported properties.
 
+### Gate 4 completion — 2026-10-21
+
+- Spellcasting metadata, slot totals/expended counts, and repeatable spells by level are editable through the canonical `CharacterSheet` state.
+- Spell capacity is derived from the PDF mapper; unsupported cantrip preparation and per-spell notes remain unexposed.
+- Ability scores support direct manual/DM-provided entry plus Standard Array, Point Buy, and 4d6-drop-lowest generation without automatic modifier calculation.
+- Generated methods retain drafts across method switches, apply all six scores atomically, and prevent reuse by slot identity.
+- Point Buy rejects non-finite and fractional values at the generation boundary and cannot exceed the 27-point budget.
+- Keyboard-only operation and 390 CSS-pixel layout passed in Chrome; generated values survived the editor → API → reopened PDF workflow.
+- Automated gate: 93 tests passed; ESLint, TypeScript, and the production build passed.
+
 ---
 
 ## Gate 5 — Error navigation and accessibility refinement
