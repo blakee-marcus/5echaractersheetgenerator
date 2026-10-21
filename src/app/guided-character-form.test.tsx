@@ -31,6 +31,58 @@ function currentCharacter(): CharacterSheet {
 }
 
 describe("GuidedCharacterForm", () => {
+  it("shows one selected section on mobile and preserves edits while navigating all sections", () => {
+    render(<Harness />);
+
+    const sectionNavigation = screen.getByRole("navigation", {
+      name: "Character sections",
+    });
+    const sectionButtons = Array.from(
+      sectionNavigation.querySelectorAll<HTMLButtonElement>("button"),
+    );
+    expect(sectionButtons).toHaveLength(11);
+
+    const identityPanel = document.querySelector<HTMLElement>(
+      '[data-editor-section="identity"]',
+    );
+    const abilitiesPanel = document.querySelector<HTMLElement>(
+      '[data-editor-section="abilities"]',
+    );
+    expect(identityPanel?.className).not.toContain("hidden");
+    expect(abilitiesPanel?.className).toContain("hidden");
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Character name" }), {
+      target: { value: "Seraphine Vale" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Abilities" }));
+
+    expect(identityPanel?.className).toContain("hidden");
+    expect(abilitiesPanel?.className).not.toContain("hidden");
+    expect(screen.getByText("Section 2 of 11")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Identity" }));
+    expect(
+      screen.getByRole<HTMLInputElement>("textbox", { name: "Character name" })
+        .value,
+    ).toBe("Seraphine Vale");
+  });
+
+  it("exposes the live character summary in a mobile disclosure before the editor", () => {
+    render(<Harness />);
+
+    const summary = screen.getByText("Character summary", { selector: "summary" });
+    const disclosure = summary.closest("details");
+    const navigation = screen.getByRole("navigation", {
+      name: "Character sections",
+    });
+
+    expect(disclosure).toBeTruthy();
+    expect(disclosure?.textContent).toContain("Nyx Vesper");
+    expect(
+      disclosure!.compareDocumentPosition(navigation) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("renders labeled identity, ability, and combat controls from character state", () => {
     render(<Harness />);
 

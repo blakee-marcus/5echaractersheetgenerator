@@ -10,8 +10,21 @@ const fetchMock = vi.fn<typeof fetch>();
 const createObjectUrlMock = vi.fn(() => "blob:character-sheet");
 const revokeObjectUrlMock = vi.fn();
 const anchorClickMock = vi.fn();
+const storageValues = new Map<string, string>();
+const localStorageMock: Storage = {
+  get length() {
+    return storageValues.size;
+  },
+  clear: () => storageValues.clear(),
+  getItem: (key) => storageValues.get(key) ?? null,
+  key: (index) => Array.from(storageValues.keys())[index] ?? null,
+  removeItem: (key) => storageValues.delete(key),
+  setItem: (key, value) => storageValues.set(key, value),
+};
 
 beforeEach(() => {
+  storageValues.clear();
+  vi.stubGlobal("localStorage", localStorageMock);
   fetchMock.mockReset();
   createObjectUrlMock.mockReset();
   createObjectUrlMock.mockReturnValue("blob:character-sheet");
@@ -34,6 +47,245 @@ afterEach(() => {
 });
 
 describe("CharacterEditor", () => {
+  it("restores a valid local draft before autosave can replace it", async () => {
+    const restoredCharacter = {
+      ...exampleCharacter,
+      identity: {
+        ...exampleCharacter.identity,
+        characterName: "Restored Sentinel",
+      },
+    };
+    const savedDraft = JSON.stringify({
+      version: 1,
+      character: restoredCharacter,
+      jsonDraft: JSON.stringify(restoredCharacter, null, 2),
+      jsonDirty: false,
+    });
+    localStorage.setItem("nyx-character-forge:draft", savedDraft);
+
+    render(<CharacterEditor initialCharacter={exampleCharacter} />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole<HTMLInputElement>("textbox", { name: "Character name" })
+          .value,
+      ).toBe("Restored Sentinel"),
+    );
+    expect(localStorage.getItem("nyx-character-forge:draft")).toBe(savedDraft);
+    expect(screen.getByText("Saved in this browser")).toBeTruthy();
+  });
+
+  it("persists guided changes and restores them after remounting", async () => {
+    const { unmount } = render(
+      <CharacterEditor initialCharacter={exampleCharacter} />,
+    );
+    await screen.findByText("Not saved in this browser yet");
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Character name" }), {
+      target: { value: "Persistent Sentinel" },
+    });
+
+    await screen.findByText("Saved in this browser");
+    unmount();
+    render(<CharacterEditor initialCharacter={exampleCharacter} />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole<HTMLInputElement>("textbox", { name: "Character name" })
+          .value,
+      ).toBe("Persistent Sentinel"),
+    );
+  });
+
+  it("restores an unapplied malformed JSON draft without replacing canonical state", async () => {
+    const { unmount } = render(
+      <CharacterEditor initialCharacter={exampleCharacter} />,
+    );
+    await screen.findByText("Not saved in this browser yet");
+    fireEvent.click(screen.getByRole("button", { name: "Advanced JSON" }));
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Advanced character JSON" }),
+      { target: { value: '{"identity":' } },
+    );
+    await screen.findByText("Saved in this browser");
+
+    unmount();
+    render(<CharacterEditor initialCharacter={exampleCharacter} />);
+    await screen.findByText("Saved in this browser");
+    fireEvent.click(screen.getByRole("button", { name: "Advanced JSON" }));
+    expect(
+      screen.getByRole<HTMLTextAreaElement>("textbox", {
+        name: "Advanced character JSON",
+      }).value,
+    ).toBe('{"identity":');
+    fireEvent.click(screen.getByRole("button", { name: "Guided editor" }));
+    expect(
+      screen.getByRole<HTMLInputElement>("textbox", { name: "Character name" })
+        .value,
+    ).toBe("Nyx Vesper");
+  });
+
+  it("persists applied Advanced JSON as canonical character data", async () => {
+    const { unmount } = render(
+      <CharacterEditor initialCharacter={exampleCharacter} />,
+    );
+    await screen.findByText("Not saved in this browser yet");
+    fireEvent.click(screen.getByRole("button", { name: "Advanced JSON" }));
+    const appliedCharacter = {
+      ...exampleCharacter,
+      identity: {
+        ...exampleCharacter.identity,
+        characterName: "Applied Persistence",
+      },
+    };
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Advanced character JSON" }),
+      { target: { value: JSON.stringify(appliedCharacter) } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Apply JSON" }));
+    await screen.findByText("Saved in this browser");
+
+    unmount();
+    render(<CharacterEditor initialCharacter={exampleCharacter} />);
+    await screen.findByText("Saved in this browser");
+    expect(
+      screen.getByRole<HTMLInputElement>("textbox", { name: "Character name" })
+        .value,
+    ).toBe("Applied Persistence");
+  });
+
+  it("does not overwrite a malformed saved draft", async () => {
+    localStorage.setItem("nyx-character-forge:draft", "not-json");
+
+    render(<CharacterEditor initialCharacter={exampleCharacter} />);
+
+    await screen.findByText("Saved draft could not be restored");
+    expect(localStorage.getItem("nyx-character-forge:draft")).toBe("not-json");
+    expect(
+      screen.getByRole<HTMLInputElement>("textbox", { name: "Character name" })
+        .value,
+    ).toBe("Nyx Vesper");
+  });
+
+  it("deliberately discards the saved draft and resets the editor", async () => {
+    const restoredCharacter = {
+      ...exampleCharacter,
+      identity: {
+        ...exampleCharacter.identity,
+        characterName: "Draft To Discard",
+      },
+    };
+    localStorage.setItem(
+      "nyx-character-forge:draft",
+      JSON.stringify({
+        version: 1,
+        character: restoredCharacter,
+        jsonDraft: JSON.stringify(restoredCharacter, null, 2),
+        jsonDirty: false,
+      }),
+    );
+    vi.stubGlobal("confirm", vi.fn(() => true));
+    render(<CharacterEditor initialCharacter={exampleCharacter} />);
+    await waitFor(() =>
+      expect(
+        screen.getByRole<HTMLInputElement>("textbox", { name: "Character name" })
+          .value,
+      ).toBe("Draft To Discard"),
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Discard saved draft and reset editor",
+      }),
+    );
+
+    expect(localStorage.getItem("nyx-character-forge:draft")).toBeNull();
+    expect(
+      screen.getByRole<HTMLInputElement>("textbox", { name: "Character name" })
+        .value,
+    ).toBe("Nyx Vesper");
+    expect(screen.getByText("Saved draft discarded")).toBeTruthy();
+  });
+
+  it("rejects incompatible and schema-invalid saved drafts without overwriting them", async () => {
+    const incompatibleDraft = JSON.stringify({
+      version: 2,
+      character: exampleCharacter,
+      jsonDraft: JSON.stringify(exampleCharacter),
+      jsonDirty: false,
+    });
+    localStorage.setItem("nyx-character-forge:draft", incompatibleDraft);
+    const firstRender = render(
+      <CharacterEditor initialCharacter={exampleCharacter} />,
+    );
+    await screen.findByText("Saved draft uses an incompatible version");
+    expect(localStorage.getItem("nyx-character-forge:draft")).toBe(
+      incompatibleDraft,
+    );
+    firstRender.unmount();
+
+    const invalidDraft = JSON.stringify({
+      version: 1,
+      character: { abilities: { strength: { score: "eighteen" } } },
+      jsonDraft: "invalid canonical data",
+      jsonDirty: true,
+    });
+    localStorage.setItem("nyx-character-forge:draft", invalidDraft);
+    render(<CharacterEditor initialCharacter={exampleCharacter} />);
+    await screen.findByText("Saved draft could not be restored");
+    expect(localStorage.getItem("nyx-character-forge:draft")).toBe(invalidDraft);
+  });
+
+  it("reports unavailable storage without crashing or claiming success", async () => {
+    vi.spyOn(localStorageMock, "getItem").mockImplementation(() => {
+      throw new DOMException("blocked", "SecurityError");
+    });
+
+    render(<CharacterEditor initialCharacter={exampleCharacter} />);
+
+    await screen.findByText("Local saving is unavailable in this browser");
+    expect(
+      screen.getByRole<HTMLInputElement>("textbox", { name: "Character name" })
+        .value,
+    ).toBe("Nyx Vesper");
+  });
+
+  it("reports write failures and keeps the changed value in the current tab", async () => {
+    render(<CharacterEditor initialCharacter={exampleCharacter} />);
+    await screen.findByText("Not saved in this browser yet");
+    vi.spyOn(localStorageMock, "setItem").mockImplementation(() => {
+      throw new DOMException("quota", "QuotaExceededError");
+    });
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Character name" }), {
+      target: { value: "Unsaved But Present" },
+    });
+
+    await screen.findByText(
+      "Could not save locally. Changes remain in this tab only.",
+    );
+    expect(
+      screen.getByRole<HTMLInputElement>("textbox", { name: "Character name" })
+        .value,
+    ).toBe("Unsaved But Present");
+  });
+
+  it("renders the production journal shell and live character summary", () => {
+    render(<CharacterEditor initialCharacter={exampleCharacter} />);
+
+    expect(screen.getByRole("banner")).toBeTruthy();
+    expect(screen.getByText("NYX", { selector: "span" })).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: "Character sections" })).toBeTruthy();
+
+    const summary = screen.getByRole("complementary", {
+      name: "Character summary",
+    });
+    expect(summary.textContent).toContain("Nyx Vesper");
+    expect(summary.textContent).toContain("Wizard 9");
+    expect(summary.textContent).toContain("32 / 48");
+    expect(summary.textContent).toContain("Armor class");
+  });
+
   it("generates and downloads a PDF from guided changes across P2 sections", async () => {
     fetchMock.mockResolvedValue({
       ok: true,

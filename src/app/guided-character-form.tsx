@@ -39,6 +39,26 @@ interface GuidedCharacterFormProps {
 
 type AbilityName = keyof NonNullable<CharacterSheet["abilities"]>;
 
+const navItems = [
+  { id: "identity", label: "Identity", icon: "UserCircle" },
+  { id: "abilities", label: "Abilities", icon: "Heart" },
+  { id: "skills", label: "Skills", icon: "List" },
+  { id: "combat", label: "Combat", icon: "Sword" },
+  { id: "attacks", label: "Attacks", icon: "Shield" },
+  { id: "equipment", label: "Equipment", icon: "Bag" },
+  { id: "features", label: "Features", icon: "MagicWand" },
+  { id: "personality", label: "Personality", icon: "Star" },
+  { id: "appearance", label: "Appearance", icon: "UserCircle" },
+  { id: "backstory", label: "Backstory", icon: "BookOpen" },
+  { id: "spellcasting", label: "Spellcasting", icon: "Lightning" },
+] as const satisfies readonly {
+  id: string;
+  label: string;
+  icon: keyof typeof Icons;
+}[];
+
+type SectionId = (typeof navItems)[number]["id"];
+
 const abilities: readonly { key: AbilityName; label: string }[] = [
   { key: "strength", label: "Strength" },
   { key: "dexterity", label: "Dexterity" },
@@ -99,6 +119,78 @@ const abilityKeyLabel = (key: AbilityName): string => {
   return ability ? ability.label : key;
 };
 
+function CharacterSummaryContent({ character }: { character: CharacterSheet }) {
+  return (
+    <>
+      <p className="font-sans text-xs font-extrabold uppercase tracking-[0.14em] text-[var(--accent)]">
+        Current character
+      </p>
+      <h2 className="mt-2 font-display text-2xl font-semibold leading-tight">
+        {character.identity?.characterName || "Unnamed adventurer"}
+      </h2>
+      <p className="mt-1 font-sans text-sm text-[var(--muted)]">
+        {[character.identity?.race, character.identity?.classAndLevel]
+          .filter(Boolean)
+          .join(" · ") || "Character details pending"}
+      </p>
+      <p className="mt-1 font-sans text-xs text-[var(--muted)]">
+        {character.identity?.background || "Background pending"}
+      </p>
+
+      <dl className="mt-5 grid grid-cols-3 gap-2 border-y border-[var(--border)] py-4 font-sans text-center">
+        <div>
+          <dt className="text-[0.65rem] font-bold uppercase tracking-wide text-[var(--muted)]">
+            Armor class
+          </dt>
+          <dd className="mt-1 text-2xl font-extrabold tabular-nums">
+            {character.combat?.armorClass ?? "—"}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-[0.65rem] font-bold uppercase tracking-wide text-[var(--muted)]">
+            Hit points
+          </dt>
+          <dd className="mt-1 text-lg font-extrabold tabular-nums">
+            {character.combat?.hitPoints?.current ?? "—"} /{" "}
+            {character.combat?.hitPoints?.maximum ?? "—"}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-[0.65rem] font-bold uppercase tracking-wide text-[var(--muted)]">
+            Speed
+          </dt>
+          <dd className="mt-1 text-2xl font-extrabold tabular-nums">
+            {character.combat?.speed ?? "—"}
+          </dd>
+        </div>
+      </dl>
+
+      <h3 className="mt-5 font-display text-sm font-bold uppercase tracking-[0.08em]">
+        Ability scores
+      </h3>
+      <dl className="mt-3 grid grid-cols-3 gap-2 font-sans">
+        {abilities.map(({ key, label }) => (
+          <div
+            key={key}
+            className="rounded-lg border border-[var(--border)] bg-[var(--parchment)] px-2 py-2 text-center"
+          >
+            <dt className="text-[0.65rem] font-bold uppercase tracking-wide text-[var(--muted)]">
+              {label.slice(0, 3)}
+            </dt>
+            <dd className="text-lg font-extrabold tabular-nums">
+              {character.abilities?.[key]?.score ?? "—"}
+            </dd>
+          </div>
+        ))}
+      </dl>
+
+      <p className="mt-5 border-t border-[var(--border)] pt-4 text-sm leading-6 text-[var(--muted)]">
+        Values update as you edit. Ability modifiers and rules remain manual.
+      </p>
+    </>
+  );
+}
+
 export function normalizePointBuyScore(
   requested: number | undefined,
 ): number | undefined {
@@ -111,24 +203,7 @@ export function GuidedCharacterForm({
   character,
   onChange,
 }: GuidedCharacterFormProps) {
-  const navItems: readonly {
-    id: string;
-    label: string;
-    icon: keyof typeof Icons;
-  }[] = [
-    { id: "identity", label: "Identity", icon: "UserCircle" },
-    { id: "abilities", label: "Abilities", icon: "Heart" },
-    { id: "skills", label: "Skills", icon: "List" },
-    { id: "combat", label: "Combat", icon: "Sword" },
-    { id: "attacks", label: "Attacks", icon: "Shield" },
-    { id: "equipment", label: "Equipment", icon: "Bag" },
-    { id: "features", label: "Features", icon: "MagicWand" },
-    { id: "personality", label: "Personality", icon: "Star" },
-    { id: "appearance", label: "Appearance", icon: "UserCircle" },
-    { id: "backstory", label: "Backstory", icon: "BookOpen" },
-    { id: "spellcasting", label: "Spellcasting", icon: "Lightning" },
-  ];
-
+  const [activeSection, setActiveSection] = useState<SectionId>("identity");
   const [generationMethod, setGenerationMethod] = useState<GenerationMethod>(
     "manual",
   );
@@ -246,27 +321,66 @@ export function GuidedCharacterForm({
     setRollingAssignments(emptyAssignments());
   };
 
+  const activeSectionIndex = navItems.findIndex(({ id }) => id === activeSection);
+  const sectionPanelClass = (id: SectionId) =>
+    activeSection === id ? "block" : "hidden xl:block";
+  const selectSection = (id: SectionId) => {
+    setActiveSection(id);
+    const section = document.getElementById(id);
+    if (typeof section?.scrollIntoView === "function") {
+      section.scrollIntoView({ block: "start" });
+    }
+  };
+  const previousSection = navItems[activeSectionIndex - 1];
+  const nextSection = navItems[activeSectionIndex + 1];
+
   return (
-    <div className="space-y-8">
+    <div className="grid min-w-0 gap-6 xl:grid-cols-[13rem_minmax(0,1fr)_16rem] xl:items-start">
+      <details className="rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-sm xl:hidden">
+        <summary className="min-h-11 cursor-pointer px-4 py-3 font-sans text-sm font-extrabold text-[var(--foreground)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]">
+          Character summary
+        </summary>
+        <div className="border-t border-[var(--border)] p-5">
+          <CharacterSummaryContent character={character} />
+        </div>
+      </details>
+
       <nav
-        className="flex gap-2 overflow-x-auto pb-1 font-sans text-sm"
+        className="flex gap-2 overflow-x-auto pb-1 font-sans text-sm xl:sticky xl:top-28 xl:flex-col xl:overflow-visible xl:rounded-xl xl:border xl:border-[var(--border)] xl:bg-[var(--surface)] xl:p-3 xl:shadow-[0_12px_35px_rgb(36_30_26/0.07)]"
         aria-label="Character sections"
       >
-        {navItems.map(({ id, label, icon }) => {
+        <p className="hidden px-3 pb-2 font-display text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)] xl:block">
+          Journal chapters
+        </p>
+        {navItems.map(({ id, label, icon }, index) => {
           const IconComponent = Icons[icon];
           return (
-            <a
+            <button
               key={id}
-              className="min-h-11 shrink-0 rounded-md border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 font-bold transition hover:border-[var(--accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
-              href={`#${id}`}
+              className={`inline-flex min-h-11 shrink-0 items-center rounded-lg border px-4 py-2.5 font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)] xl:px-3 ${
+                activeSection === id
+                  ? "border-[var(--accent)] bg-[var(--parchment)] text-[var(--foreground)]"
+                  : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)] hover:bg-[var(--parchment)] xl:border-transparent xl:bg-transparent"
+              }`}
+              type="button"
+              aria-label={label}
+              aria-pressed={activeSection === id}
+              onClick={() => selectSection(id)}
             >
-              <IconComponent className="size-3 shrink-0 mr-1.5" weight="regular" />
+              <span className="mr-2 hidden w-5 text-xs tabular-nums text-[var(--muted)] xl:inline">{String(index + 1).padStart(2, "0")}</span>
+              <IconComponent className="mr-2 size-4 shrink-0 text-[var(--accent)]" weight="regular" />
               {label}
-            </a>
+            </button>
           );
         })}
       </nav>
 
+      <div className="min-w-0 space-y-8">
+      <p className="font-sans text-sm font-bold text-[var(--muted)] xl:hidden" aria-live="polite">
+        Section {activeSectionIndex + 1} of {navItems.length}
+      </p>
+
+      <div className={sectionPanelClass("identity")} data-editor-section="identity">
       <fieldset id="identity" className={fieldsetClass}>
         <legend className="px-2 font-sans text-xl font-extrabold">Identity</legend>
         <p className="mt-1 font-sans text-sm text-[var(--muted)]">
@@ -355,7 +469,9 @@ export function GuidedCharacterForm({
           />
         </div>
       </fieldset>
+      </div>
 
+      <div className={sectionPanelClass("abilities")} data-editor-section="abilities">
       <fieldset id="abilities" className={`${fieldsetClass} scroll-mt-36`}>
         <legend className="px-2 font-sans text-xl font-extrabold">
           Abilities and saving throws
@@ -697,9 +813,13 @@ export function GuidedCharacterForm({
           })}
         </div>
       </fieldset>
+      </div>
 
+      <div className={sectionPanelClass("skills")} data-editor-section="skills">
       <SkillsSection character={character} onChange={onChange} />
+      </div>
 
+      <div className={sectionPanelClass("combat")} data-editor-section="combat">
       <fieldset id="combat" className={fieldsetClass}>
         <legend className="px-2 font-sans text-xl font-extrabold">Combat</legend>
         <p className="mt-1 font-sans text-sm text-[var(--muted)]">
@@ -795,14 +915,56 @@ export function GuidedCharacterForm({
           />
         </div>
       </fieldset>
+      </div>
 
+      <div className={sectionPanelClass("attacks")} data-editor-section="attacks">
       <AttacksSection character={character} onChange={onChange} />
+      </div>
+      <div className={sectionPanelClass("equipment")} data-editor-section="equipment">
       <EquipmentSection character={character} onChange={onChange} />
+      </div>
+      <div className={sectionPanelClass("features")} data-editor-section="features">
       <FeaturesSection character={character} onChange={onChange} />
+      </div>
+      <div className={sectionPanelClass("personality")} data-editor-section="personality">
       <PersonalitySection character={character} onChange={onChange} />
+      </div>
+      <div className={sectionPanelClass("appearance")} data-editor-section="appearance">
       <AppearanceSection character={character} onChange={onChange} />
+      </div>
+      <div className={sectionPanelClass("backstory")} data-editor-section="backstory">
       <BackstorySection character={character} onChange={onChange} />
+      </div>
+      <div className={sectionPanelClass("spellcasting")} data-editor-section="spellcasting">
       <SpellcastingSection character={character} onChange={onChange} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 xl:hidden" aria-label="Section navigation">
+        <button
+          className={secondaryButtonClass}
+          type="button"
+          disabled={!previousSection}
+          onClick={() => previousSection && selectSection(previousSection.id)}
+        >
+          Previous
+        </button>
+        <button
+          className={secondaryButtonClass}
+          type="button"
+          disabled={!nextSection}
+          onClick={() => nextSection && selectSection(nextSection.id)}
+        >
+          Next
+        </button>
+      </div>
+      </div>
+
+      <aside
+        className="hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[0_12px_35px_rgb(36_30_26/0.07)] xl:sticky xl:top-28 xl:block"
+        aria-label="Character summary"
+      >
+        <CharacterSummaryContent character={character} />
+      </aside>
     </div>
   );
 }

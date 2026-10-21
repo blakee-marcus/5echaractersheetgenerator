@@ -6,13 +6,13 @@ import { parseOptionalInteger } from "./character-editor-state";
 import * as Icons from "./icons";
 
 export const inputClass =
-  "min-h-11 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 font-sans text-base text-[var(--foreground)] shadow-sm outline-none transition focus:border-[var(--focus)] focus:ring-2 focus:ring-[var(--focus)]/30";
+  "min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 font-sans text-base text-[var(--foreground)] shadow-[0_1px_2px_rgb(36_30_26/0.06)] outline-none transition placeholder:text-[var(--muted)]/70 hover:border-[var(--iron)] focus:border-[var(--focus)] focus:ring-2 focus:ring-[var(--focus)]/20";
 export const fieldsetClass =
-  "scroll-mt-28 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm sm:p-6";
+  "scroll-mt-32 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[0_12px_35px_rgb(36_30_26/0.07)] sm:p-6";
 export const labelClass =
-  "block font-sans text-sm font-bold text-[var(--foreground)]";
+  "block font-sans text-sm font-semibold text-[var(--foreground)]";
 export const secondaryButtonClass =
-  "inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] px-4 py-2 font-sans text-sm font-bold text-[var(--foreground)] transition hover:border-[var(--accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)] disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 font-sans text-sm font-bold text-[var(--foreground)] shadow-sm transition hover:border-[var(--accent)] hover:bg-[var(--parchment)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)] disabled:cursor-not-allowed disabled:opacity-50";
 
 interface TextFieldProps {
   id: string;
