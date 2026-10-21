@@ -31,6 +31,7 @@ import {
   SkillsSection,
 } from "./guided-character-details";
 import { SpellcastingSection } from "./guided-spellcasting-section";
+import { ClassSelection } from "./class-selection-section";
 
 interface GuidedCharacterFormProps {
   character: CharacterSheet;
@@ -395,13 +396,9 @@ export function GuidedCharacterForm({
               onChange(updateIdentity(character, "characterName", value))
             }
           />
-          <TextField
-            id="identity-class-level"
-            label="Class and level"
-            value={character.identity?.classAndLevel}
-            onChange={(value) =>
-              onChange(updateIdentity(character, "classAndLevel", value))
-            }
+          <ClassSelection
+            character={character}
+            onChange={onChange}
           />
           <TextField
             id="identity-race"

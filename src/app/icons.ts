@@ -23,4 +23,9 @@ export {
   List,
   ArrowLeft,
   ArrowRight,
+  MusicNote,
+  Tree,
+  Target,
+  House,
+  Sparkle,
 } from "@phosphor-icons/react";
