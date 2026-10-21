@@ -25,74 +25,199 @@ export interface ClassSelectionProps {
 }
 
 const CLASS_ICON_MAP: Record<string, keyof typeof Icons> = {
-  barbarian: "Sword",
-  bard: "MusicNote",
-  cleric: "Shield",
-  druid: "Tree",
-  fighter: "Shield",
-  monk: "Heart",
-  paladin: "Shield",
+  barbarian: "Axe",
+  bard: "MusicNotesSimple",
+  cleric: "ShieldCheck",
+  druid: "Leaf",
+  fighter: "Sword",
+  monk: "HandFist",
+  paladin: "ShieldStar",
   ranger: "Target",
   rogue: "Sword",
-  sorcerer: "Lightning",
+  sorcerer: "Sparkle",
   warlock: "MagicWand",
   wizard: "BookOpen",
   homebrew: "PlusCircle",
 };
 
+const CLASS_PLAYSTYLE: Record<string, { label: string; color: string }[]> = {
+  barbarian: [{ label: "Melee", color: "var(--accent)" }, { label: "Tank", color: "var(--moss)" }],
+  bard: [{ label: "Support", color: "var(--arcane)" }, { label: "Control", color: "var(--gold)" }, { label: "Utility", color: "var(--moss)" }],
+  cleric: [{ label: "Support", color: "var(--arcane)" }, { label: "Tank", color: "var(--moss)" }, { label: "Healer", color: "var(--gold)" }],
+  druid: [{ label: "Control", color: "var(--moss)" }, { label: "Utility", color: "var(--arcane)" }, { label: "Healer", color: "var(--gold)" }],
+  fighter: [{ label: "Melee", color: "var(--accent)" }, { label: "Tank", color: "var(--moss)" }, { label: "Ranged", color: "var(--gold)" }],
+  monk: [{ label: "Melee", color: "var(--accent)" }, { label: "Striker", color: "var(--gold)" }, { label: "Mobility", color: "var(--moss)" }],
+  paladin: [{ label: "Melee", color: "var(--accent)" }, { label: "Tank", color: "var(--moss)" }, { label: "Support", color: "var(--gold)" }],
+  ranger: [{ label: "Ranged", color: "var(--gold)" }, { label: "Explorer", color: "var(--moss)" }, { label: "Striker", color: "var(--accent)" }],
+  rogue: [{ label: "Striker", color: "var(--accent)" }, { label: "Skill Monkey", color: "var(--arcane)" }, { label: "Utility", color: "var(--moss)" }],
+  sorcerer: [{ label: "Blaster", color: "var(--accent)" }, { label: "Control", color: "var(--arcane)" }, { label: "Metamagic", color: "var(--gold)" }],
+  warlock: [{ label: "Blaster", color: "var(--accent)" }, { label: "Control", color: "var(--arcane)" }, { label: "Utility", color: "var(--moss)" }],
+  wizard: [{ label: "Control", color: "var(--arcane)" }, { label: "Utility", color: "var(--moss)" }, { label: "Blaster", color: "var(--gold)" }],
+};
+
+const CLASS_COMPLEXITY: Record<string, { label: string; description: string }> = {
+  barbarian: { label: "Straightforward", description: "Simple mechanics, high durability" },
+  bard: { label: "Moderate", description: "Versatile spellcasting + skills" },
+  cleric: { label: "Moderate", description: "Prepared spells, domain choice" },
+  druid: { label: "Moderate", description: "Prepared spells, wild shape later" },
+  fighter: { label: "Straightforward", description: "Few resource pools, consistent damage" },
+  monk: { label: "Moderate", description: "Ki points, bonus actions, mobility" },
+  paladin: { label: "Moderate", description: "Spell slots for smites, auras later" },
+  ranger: { label: "Moderate", description: "Spellcasting + favored choices" },
+  rogue: { label: "Straightforward", description: "Sneak attack, cunning action, skills" },
+  sorcerer: { label: "Complex", description: "Metamagic, limited spells known" },
+  warlock: { label: "Moderate", description: "Pact magic, invocations, patron" },
+  wizard: { label: "Complex", description: "Spellbook, prepared spells, arcane recovery" },
+};
+
 function ClassCard({
   cls,
   isSelected,
+  isExpanded,
   onSelect,
+  onExpand,
 }: {
   cls: ClassDefinition;
   isSelected: boolean;
+  isExpanded: boolean;
   onSelect: () => void;
+  onExpand: () => void;
 }) {
   const IconComponent = Icons[CLASS_ICON_MAP[cls.id]] ?? Icons.BookOpen;
-  const primaryAbility = cls.primaryAbilities[0]?.toUpperCase() ?? "—";
-  const secondaryAbility = cls.primaryAbilities[1]?.toUpperCase() ?? "—";
+  const playstyles = CLASS_PLAYSTYLE[cls.id] ?? [];
+  const complexity = CLASS_COMPLEXITY[cls.id] ?? { label: "&mdash;", description: "" };
 
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={`relative rounded-xl border-2 p-4 transition-all ${
+    <div
+      className={`relative rounded-xl border-2 p-5 transition-all ${
         isSelected
           ? "border-[var(--accent)] bg-[var(--parchment)] shadow-[0_0_0_2px_var(--accent)]"
           : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)] hover:bg-[var(--parchment)]"
-      }`}
+      } ${isExpanded ? "z-10" : ""}`}
+      role="button"
+      tabIndex={0}
       aria-pressed={isSelected}
+      aria-expanded={isExpanded}
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
     >
-      <div className="flex items-start gap-3">
-        <div className="flex-shrink-0 grid size-12 place-items-center rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--accent)]">
-          <IconComponent className="size-6" weight="regular" />
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onExpand();
+        }}
+        className="absolute top-3 right-3 p-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)] hover:border-[var(--accent)] transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
+        aria-label={isExpanded ? `Collapse ${cls.name} details` : `Expand ${cls.name} details`}
+      >
+        <Icons.CaretDown className={`size-5 transition-transform ${isExpanded ? "rotate-180" : ""}`} weight="regular" />
+      </button>
+
+      <div className="flex items-start gap-4">
+        <div className="flex-shrink-0 grid size-14 place-items-center rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--accent)]">
+          <IconComponent className="size-7" weight="regular" />
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="font-display text-lg font-bold truncate">{cls.name}</h3>
-          <p className="mt-1 font-sans text-xs text-[var(--muted)] line-clamp-2">
+          <div className="flex items-baseline gap-3 flex-wrap">
+            <h3 className="font-display text-xl font-bold truncate">{cls.name}</h3>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-bold uppercase tracking-wide bg-[var(--parchment)] border border-[var(--border)] text-[var(--muted)]">
+              d{cls.hitDie} Hit Die
+            </span>
+          </div>
+
+          <p className="mt-2 font-editorial text-sm text-[var(--ink)] leading-relaxed">
             {cls.description}
           </p>
-          <dl className="mt-2 flex flex-wrap gap-3 font-sans text-[0.65rem]">
-            <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Hit Die</dt>
-            <dd className="font-mono tabular-nums">d{cls.hitDie}</dd>
-            <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Primary</dt>
-            <dd className="font-medium">{primaryAbility}</dd>
-            {secondaryAbility !== "—" && (
-              <>
-                <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Secondary</dt>
-                <dd className="font-medium">{secondaryAbility}</dd>
-              </>
-            )}
-          </dl>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            {playstyles.map((ps, i) => (
+              <span
+                key={i}
+                className="inline-flex items-center px-2 py-1 rounded-full text-[0.65rem] font-bold uppercase tracking-wide"
+                style={{ backgroundColor: `${ps.color}15`, borderColor: `${ps.color}40`, color: ps.color }}
+              >
+                {ps.label}
+              </span>
+            ))}
+            <span className="inline-flex items-center px-2 py-1 rounded-full text-[0.65rem] font-bold uppercase tracking-wide bg-[var(--parchment)] border border-[var(--border)] text-[var(--muted)]">
+              {complexity.label}
+            </span>
+          </div>
+
+          {isExpanded && (
+            <div className="mt-4 pt-4 border-t border-[var(--border)] space-y-3">
+              <dl className="grid grid-cols-2 gap-2 font-sans text-sm">
+                <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Primary Abilities</dt>
+                <dd className="font-medium">{cls.primaryAbilities.map((a) => a.toUpperCase()).join(" / ")}</dd>
+                <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Saving Throws</dt>
+                <dd className="font-medium">{cls.proficiencies.savingThrows?.map((s) => s.toUpperCase()).join(", ") ?? "&mdash;"}</dd>
+                {cls.spellcasting && (
+                  <>
+                    <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Spellcasting</dt>
+                    <dd className="font-medium">
+                      {cls.spellcasting.ability.toUpperCase()} ({cls.spellcasting.progression["1"]?.slots ? "Full" : "Ritual/Level 2+"})
+                    </dd>
+                  </>
+                )}
+              </dl>
+
+              <div>
+                <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-1">Proficiencies</dt>
+                <div className="flex flex-wrap gap-1.5">
+                  {cls.proficiencies.armor?.map((a) => (
+                    <span key={a} className="px-2 py-0.5 rounded text-[0.6rem] font-medium bg-[var(--parchment)] border border-[var(--border)] text-[var(--muted)]">
+                      Armor: {a}
+                    </span>
+                  ))}
+                  {cls.proficiencies.weapons?.map((w) => (
+                    <span key={w} className="px-2 py-0.5 rounded text-[0.6rem] font-medium bg-[var(--parchment)] border border-[var(--border)] text-[var(--muted)]">
+                      Weapons: {w}
+                    </span>
+                  ))}
+                  {cls.proficiencies.tools?.map((t) => (
+                    <span key={t} className="px-2 py-0.5 rounded text-[0.6rem] font-medium bg-[var(--parchment)] border border-[var(--border)] text-[var(--muted)]">
+                      {t.replace(/([A-Z])/g, " $1").trim()}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-1">Complexity</dt>
+                <dd className="font-sans text-sm text-[var(--ink)]">{complexity.description}</dd>
+              </div>
+
+              {cls.subclass && (
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--parchment)] p-3">
+                  <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-1">Subclass at Level {cls.subclass.level}</dt>
+                  <dd className="font-display text-sm font-bold">{cls.subclass.name}</dd>
+                  <p className="mt-1 font-editorial text-sm text-[var(--ink)]">{cls.subclass.description}</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
-      {isSelected && (
-        <span className="absolute -top-2 -right-2 size-6 rounded-full bg-[var(--accent)] text-white text-xs font-bold grid place-items-center">
-          ✓
-        </span>
-      )}
-    </button>
+
+      <div className="mt-4 flex items-center justify-end gap-3">
+        {!isSelected && (
+          <span className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] font-sans text-sm font-bold">
+            Click to choose
+          </span>
+        )}
+        {isSelected && (
+          <span className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--accent)] text-white font-sans text-sm font-bold">
+            <Icons.Check className="size-4" weight="regular" />
+            Selected
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -115,91 +240,111 @@ function ClassDetailPanel({
     onApply(choices);
   };
 
+  const requiredChoices = cls.level1Features.flatMap((f) =>
+    f.choices?.filter((c) => c.required).map((c) => c.field) ?? []
+  );
+  const allRequiredFilled = requiredChoices.every((field) => choices[field]);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-3xl">
       <button
         type="button"
         onClick={onBack}
         className="inline-flex items-center gap-2 font-sans text-sm font-bold text-[var(--accent)] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
       >
-        ← Back to classes
+        <Icons.ArrowLeft className="size-4" weight="regular" />
+        Back to classes
       </button>
 
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
-        <h2 className="font-display text-xl font-bold">{cls.name}</h2>
-        <p className="mt-2 font-sans text-sm text-[var(--muted)]">{cls.description}</p>
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6">
+        <header className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="font-display text-2xl font-bold">{cls.name}</h2>
+            <p className="mt-1 font-editorial text-base text-[var(--ink)] leading-relaxed">{cls.description}</p>
+          </div>
+          <span className="flex-shrink-0 inline-flex items-center px-3 py-1 rounded-full text-[0.65rem] font-bold uppercase tracking-wide bg-[var(--parchment)] border border-[var(--border)] text-[var(--muted)]">
+            d{cls.hitDie} Hit Die
+          </span>
+        </header>
 
-        <dl className="mt-4 grid grid-cols-2 gap-2 font-sans text-sm border-y border-[var(--border)] py-4">
+        <dl className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2 font-sans text-sm border-y border-[var(--border)] py-4">
           <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Hit Die</dt>
-          <dd className="font-mono tabular-nums">d{cls.hitDie}</dd>
+          <dd className="font-mono tabular-nums text-xl">d{cls.hitDie}</dd>
           <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Primary Abilities</dt>
-          <dd className="font-medium">{cls.primaryAbilities.map((a) => a.toUpperCase()).join(" / ")}</dd>
+          <dd className="font-medium sm:col-span-3">{cls.primaryAbilities.map((a) => a.toUpperCase()).join(" / ")}</dd>
+          <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Saving Throws</dt>
+          <dd className="font-medium sm:col-span-3">{cls.proficiencies.savingThrows?.map((s) => s.toUpperCase()).join(", ") ?? "&mdash;"}</dd>
           {cls.spellcasting && (
             <>
               <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Spellcasting</dt>
-              <dd className="font-medium">
-                {cls.spellcasting.ability.toUpperCase()} ({cls.spellcasting.progression["1"]?.slots ? "Yes" : "Ritual only"})
+              <dd className="font-medium sm:col-span-3">
+                {cls.spellcasting.ability.toUpperCase()} &mdash; {cls.spellcasting.progression["1"]?.cantrips ?? 0} cantrips, {cls.spellcasting.progression["1"]?.slots?.[1] ?? 0} level-1 slot(s)
               </dd>
             </>
           )}
         </dl>
 
-        <section>
-          <h3 className="font-sans text-lg font-bold mb-3">What you&apos;ll do</h3>
-          <p className="font-sans text-sm text-[var(--muted)]">
+        <section className="mt-6">
+          <h3 className="font-display text-lg font-bold mb-3">What you&apos;ll do</h3>
+          <p className="font-editorial text-base text-[var(--ink)] leading-relaxed">
             {cls.level1Features.map((f) => f.description).join(" ")}
           </p>
         </section>
 
-        <section>
-          <h3 className="font-sans text-lg font-bold mb-3">Your strengths</h3>
-          <div className="grid gap-2 sm:grid-cols-2">
+        <section className="mt-6">
+          <h3 className="font-display text-lg font-bold mb-3">Your strengths</h3>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {cls.proficiencies.armor?.length && (
-              <div className="rounded-lg border border-[var(--border)] p-3">
-                <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs">Armor</dt>
-                <dd className="font-sans text-sm mt-1">{cls.proficiencies.armor.join(", ")}</dd>
+              <div className="rounded-lg border border-[var(--border)] p-4 bg-[var(--parchment)]">
+                <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-2">Armor</dt>
+                <dd className="font-sans text-sm text-[var(--ink)] leading-relaxed">{cls.proficiencies.armor.join(", ")}</dd>
               </div>
             )}
             {cls.proficiencies.weapons?.length && (
-              <div className="rounded-lg border border-[var(--border)] p-3">
-                <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs">Weapons</dt>
-                <dd className="font-sans text-sm mt-1">{cls.proficiencies.weapons.join(", ")}</dd>
+              <div className="rounded-lg border border-[var(--border)] p-4 bg-[var(--parchment)]">
+                <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-2">Weapons</dt>
+                <dd className="font-sans text-sm text-[var(--ink)] leading-relaxed">{cls.proficiencies.weapons.join(", ")}</dd>
               </div>
             )}
             {cls.proficiencies.tools?.length && (
-              <div className="rounded-lg border border-[var(--border)] p-3">
-                <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs">Tools</dt>
-                <dd className="font-sans text-sm mt-1">{cls.proficiencies.tools.join(", ")}</dd>
+              <div className="rounded-lg border border-[var(--border)] p-4 bg-[var(--parchment)]">
+                <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-2">Tools</dt>
+                <dd className="font-sans text-sm text-[var(--ink)] leading-relaxed">{cls.proficiencies.tools.map((t) => t.replace(/([A-Z])/g, " $1").trim()).join(", ")}</dd>
               </div>
             )}
             {cls.proficiencies.savingThrows?.length && (
-              <div className="rounded-lg border border-[var(--border)] p-3">
-                <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs">Saving Throws</dt>
-                <dd className="font-sans text-sm mt-1">
-                  {cls.proficiencies.savingThrows.map((s) => s.toUpperCase()).join(", ")}
-                </dd>
+              <div className="rounded-lg border border-[var(--border)] p-4 bg-[var(--parchment)]">
+                <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-2">Saving Throws</dt>
+                <dd className="font-sans text-sm text-[var(--ink)] leading-relaxed">{cls.proficiencies.savingThrows.map((s) => s.toUpperCase()).join(", ")}</dd>
+              </div>
+            )}
+            {cls.proficiencies.skills && (
+              <div className="rounded-lg border border-[var(--border)] p-4 bg-[var(--parchment)] sm:col-span-2 lg:col-span-1">
+                <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-2">Skills (choose {cls.proficiencies.skills.choose})</dt>
+                <dd className="font-sans text-sm text-[var(--ink)] leading-relaxed">{cls.proficiencies.skills.from.map((s) => s.replace(/([A-Z])/g, " $1").trim()).join(", ")}</dd>
               </div>
             )}
           </div>
         </section>
 
-        <section>
-          <h3 className="font-sans text-lg font-bold mb-3">What you gain at level 1</h3>
-          <ul className="space-y-3">
+        <section className="mt-6">
+          <h3 className="font-display text-lg font-bold mb-3">What you gain at level 1</h3>
+          <ul className="space-y-4">
             {cls.level1Features.map((feature: ClassFeature) => (
-              <li key={feature.name} className="rounded-lg border border-[var(--border)] p-4">
-                <h4 className="font-display text-base font-bold">{feature.name}</h4>
-                <p className="mt-1 font-sans text-sm text-[var(--muted)]">{feature.description}</p>
+              <li key={feature.name} className="rounded-lg border border-[var(--border)] p-5 bg-[var(--parchment)]">
+                <h4 className="font-display text-lg font-bold">{feature.name}</h4>
+                <p className="mt-2 font-editorial text-base text-[var(--ink)] leading-relaxed">{feature.description}</p>
                 {feature.choices?.length && (
-                  <div className="mt-3 space-y-3">
+                  <div className="mt-4 space-y-4 border-t border-[var(--border)] pt-4">
                     {feature.choices.map((choice) => (
                       <div key={choice.field}>
-                        <label className="block font-sans text-sm font-bold mb-1">{choice.prompt}</label>
+                        <label className="block font-sans text-sm font-bold mb-2">{choice.prompt}</label>
                         <select
                           value={choices[choice.field] ?? ""}
                           onChange={(e) => handleChoiceChange(choice.field, e.target.value)}
                           className="min-h-11 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 font-sans text-base text-[var(--foreground)] shadow-sm outline-none transition focus:border-[var(--focus)] focus:ring-2 focus:ring-[var(--focus)]/30"
                           required={choice.required}
+                          aria-required={choice.required}
                         >
                           <option value="">Choose...</option>
                           {choice.options.map((opt) => (
@@ -209,7 +354,7 @@ function ClassDetailPanel({
                           ))}
                         </select>
                         {choice.required && !choices[choice.field] && (
-                          <p className="mt-1 font-sans text-xs text-[var(--accent)]">Required choice</p>
+                          <p className="mt-1 font-sans text-sm text-[var(--accent)]">This choice is required</p>
                         )}
                       </div>
                     ))}
@@ -221,29 +366,31 @@ function ClassDetailPanel({
         </section>
 
         {cls.subclass && (
-          <section className="rounded-lg border border-[var(--border)] bg-[var(--parchment)] p-4">
-            <h3 className="font-sans text-lg font-bold mb-1">Upcoming choice</h3>
-            <p className="font-sans text-sm text-[var(--muted)]">
-              At level {cls.subclass.level}, you&apos;ll choose your {cls.subclass.name}: {cls.subclass.description}
+          <section className="mt-6 rounded-lg border border-[var(--border)] bg-[var(--parchment)] p-5">
+            <h3 className="font-display text-lg font-bold mb-2">Upcoming Choice</h3>
+            <p className="font-editorial text-base text-[var(--ink)] leading-relaxed">
+              At level <strong>{cls.subclass.level}</strong>, you&apos;ll choose your <strong>{cls.subclass.name}</strong>: {cls.subclass.description}
             </p>
           </section>
         )}
 
-        <div className="flex items-center justify-end gap-3 border-t border-[var(--border)] pt-4">
+        <div className="mt-6 flex items-center justify-end gap-3 border-t border-[var(--border)] pt-4">
           <button
             type="button"
             onClick={onBack}
             className={secondaryButtonClass}
           >
+            <Icons.ArrowLeft className="size-4 mr-2" weight="regular" />
             Cancel
           </button>
           <button
             type="button"
             onClick={handleApply}
-            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--accent)] bg-[var(--accent)] px-5 py-2.5 font-sans text-sm font-extrabold text-white shadow-[0_6px_16px_rgb(118_37_31/0.18)] transition hover:border-[var(--accent-strong)] hover:bg-[var(--accent-strong)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
-            disabled={cls.level1Features.some((f) => f.choices?.some((c) => c.required && !choices[c.field]))}
+            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--accent)] bg-[var(--accent)] px-6 py-2.5 font-sans text-sm font-extrabold text-white shadow-[0_6px_16px_rgb(118_37_31/0.18)] transition hover:border-[var(--accent-strong)] hover:bg-[var(--accent-strong)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)] disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={!allRequiredFilled}
           >
-            Apply {cls.name}
+            <Icons.Check className="size-4 mr-2" weight="regular" />
+            Become a {cls.name}
           </button>
         </div>
       </div>
@@ -304,12 +451,14 @@ function HomebrewClassForm({
   };
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 space-y-6 max-w-2xl">
-      <h2 className="font-display text-xl font-bold">Create Homebrew Class</h2>
-      <p className="font-sans text-sm text-[var(--muted)]">
-        Define a custom class with your Dungeon Master. Homebrew classes are labeled as custom and may not have
-        complete rules support.
-      </p>
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 space-y-6 max-w-2xl">
+      <header>
+        <h2 className="font-display text-2xl font-bold">Create Homebrew Class</h2>
+        <p className="mt-1 font-editorial text-base text-[var(--ink)] leading-relaxed">
+          Define a custom class with your Dungeon Master. Homebrew classes are labeled as custom and may not have
+          complete rules support.
+        </p>
+      </header>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField
@@ -333,13 +482,15 @@ function HomebrewClassForm({
         label="Description"
         value={form.description}
         onChange={(v) => handleChange("description", v ?? "")}
+        rows={3}
       />
 
-      <fieldset className="rounded-lg border border-[var(--border)] p-4">
-        <legend className="px-2 font-sans text-lg font-bold">Primary Abilities</legend>
-        <div className="mt-3 flex flex-wrap gap-2">
+      <fieldset className="rounded-lg border border-[var(--border)] p-5 bg-[var(--parchment)]">
+        <legend className="px-2 font-display text-lg font-bold">Primary Abilities</legend>
+        <p className="mt-1 font-editorial text-sm text-[var(--ink)]">Choose 1&ndash;2 primary abilities for this class.</p>
+        <div className="mt-4 flex flex-wrap gap-3">
           {["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"].map((ability) => (
-            <label key={ability} className="inline-flex items-center gap-2">
+            <label key={ability} className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)] transition cursor-pointer">
               <input
                 type="checkbox"
                 checked={form.primaryAbilities.includes(ability)}
@@ -356,9 +507,10 @@ function HomebrewClassForm({
         </div>
       </fieldset>
 
-      <fieldset className="rounded-lg border border-[var(--border)] p-4">
-        <legend className="px-2 font-sans text-lg font-bold">Level-1 Features</legend>
-        <div className="mt-3 space-y-3">
+      <fieldset className="rounded-lg border border-[var(--border)] p-5 bg-[var(--parchment)]">
+        <legend className="px-2 font-display text-lg font-bold">Level-1 Features</legend>
+        <p className="mt-1 font-editorial text-sm text-[var(--ink)]">Add the features this class grants at 1st level.</p>
+        <div className="mt-4 space-y-3">
           {form.level1Features.map((feature, index) => (
             <div key={index} className="flex gap-2">
               <TextField
@@ -395,21 +547,24 @@ function HomebrewClassForm({
             onClick={() => handleChange("level1Features", [...form.level1Features, { name: "", description: "" }])}
             className={secondaryButtonClass}
           >
-            + Add feature
+            <Icons.Plus className="size-4 mr-2" weight="regular" />
+            Add feature
           </button>
         </div>
       </fieldset>
 
       <div className="flex items-center justify-end gap-3 border-t border-[var(--border)] pt-4">
         <button type="button" onClick={onCancel} className={secondaryButtonClass}>
+          <Icons.X className="size-4 mr-2" weight="regular" />
           Cancel
         </button>
         <button
           type="button"
           onClick={handleSubmit}
           disabled={!form.name.trim() || !form.description.trim()}
-          className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--accent)] bg-[var(--accent)] px-5 py-2.5 font-sans text-sm font-extrabold text-white shadow-[0_6px_16px_rgb(118_37_31/0.18)] transition hover:border-[var(--accent-strong)] hover:bg-[var(--accent-strong)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)] disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--accent)] bg-[var(--accent)] px-6 py-2.5 font-sans text-sm font-extrabold text-white shadow-[0_6px_16px_rgb(118_37_31/0.18)] transition hover:border-[var(--accent-strong)] hover:bg-[var(--accent-strong)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)] disabled:cursor-not-allowed disabled:opacity-60"
         >
+          <Icons.Sparkle className="size-4 mr-2" weight="regular" />
           Create class
         </button>
       </div>
@@ -423,6 +578,7 @@ export function ClassSelection({
   onClassSelected,
 }: ClassSelectionProps) {
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [expandedClassId, setExpandedClassId] = useState<string | null>(null);
   const [showHomebrew, setShowHomebrew] = useState(false);
   const [homebrewClasses, setHomebrewClasses] = useState<ClassDefinition[]>([]);
 
@@ -432,35 +588,34 @@ export function ClassSelection({
     setSelectedClassId(classId);
   };
 
-  const handleApplyClass = (selectedChoices: Record<string, string>) => {
+  const handleExpand = (classId: string) => {
+    setExpandedClassId(expandedClassId === classId ? null : classId);
+  };
+
+  const handleApplyClass = () => {
     const cls = getClassById(selectedClassId!) ?? homebrewClasses.find((c) => c.id === selectedClassId);
     if (!cls) return;
 
     let nextCharacter = character;
 
-    // Update identity
     nextCharacter = updateIdentity(nextCharacter, "classAndLevel", `${cls.name} 1`);
-
-    // Update hit dice
     nextCharacter = updateHitDice(nextCharacter, "denomination", `d${cls.hitDie}`);
     nextCharacter = updateHitDice(nextCharacter, "total", 1);
 
-    // Update hit points to max for level 1 (hit die + con mod)
     const conMod = nextCharacter.abilities?.constitution?.modifier ?? 0;
     nextCharacter = updateHitPoints(nextCharacter, "maximum", cls.hitDie + conMod);
     nextCharacter = updateHitPoints(nextCharacter, "current", cls.hitDie + conMod);
 
-    // Update saving throw proficiencies
     cls.proficiencies.savingThrows?.forEach((save) => {
       nextCharacter = updateAbilitySavingThrow(nextCharacter, save as "strength" | "dexterity" | "constitution" | "intelligence" | "wisdom" | "charisma", { proficient: true });
     });
 
-    // Update proficiency bonus
     nextCharacter = { ...nextCharacter, proficiencyBonus: 2 };
 
     onChange(nextCharacter);
     onClassSelected?.(cls.id);
     setSelectedClassId(null);
+    setExpandedClassId(null);
   };
 
   const handleHomebrewCreate = (customClass: ClassDefinition) => {
@@ -480,51 +635,54 @@ export function ClassSelection({
       <ClassDetailPanel
         cls={cls}
         onApply={handleApplyClass}
-        onBack={() => setSelectedClassId(null)}
+        onBack={() => {
+          setSelectedClassId(null);
+          setExpandedClassId(null);
+        }}
       />
     );
   }
 
   return (
-    <fieldset className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
-      <legend className="px-2 font-sans text-xl font-extrabold">Choose Your Class</legend>
-      <p className="mt-1 font-sans text-sm text-[var(--muted)]">
-        How do you want to adventure? Choose what sounds enjoyable. You can customize your character as you go.
-      </p>
+    <div className="space-y-6">
+      <div className="text-center" role="heading" aria-level={2}>
+        <h2 className="font-display text-2xl font-bold">Choose Your Class</h2>
+        <p className="mt-2 font-editorial text-base text-[var(--ink)] leading-relaxed max-w-2xl mx-auto">
+          Your class defines your capabilities, your role in the party, and how you&apos;ll grow.
+          Read each description and pick what sounds fun &mdash; you can customize the details afterward.
+        </p>
+        {currentClassId && (
+          <p className="mt-4 font-sans text-sm text-[var(--muted)]">
+            Current class: <span className="font-medium capitalize">{currentClassId}</span>
+          </p>
+        )}
+      </div>
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {CLASS_CATALOG.map((cls) => (
           <ClassCard
             key={cls.id}
             cls={cls}
             isSelected={selectedClassId === cls.id}
+            isExpanded={expandedClassId === cls.id}
             onSelect={() => handleClassSelect(cls.id)}
+            onExpand={() => handleExpand(cls.id)}
           />
         ))}
         <button
           type="button"
           onClick={() => setShowHomebrew(true)}
-          className="relative rounded-xl border-2 border-dashed border-[var(--border)] bg-[var(--surface)] p-4 transition hover:border-[var(--accent)] hover:bg-[var(--parchment)]"
+          className="relative rounded-xl border-2 border-dashed border-[var(--border)] bg-[var(--surface)] p-5 transition hover:border-[var(--accent)] hover:bg-[var(--parchment)] flex flex-col items-center justify-center min-h-[320px]"
         >
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 grid size-12 place-items-center rounded-lg border border-dashed border-[var(--border)] bg-[var(--background)] text-[var(--muted)]">
-              <Icons.PlusCircle className="size-6" weight="regular" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="font-display text-lg font-bold">Homebrew</h3>
-              <p className="mt-1 font-sans text-xs text-[var(--muted)] line-clamp-2">
-                Create a custom class with your Dungeon Master.
-              </p>
-            </div>
+          <div className="flex-shrink-0 grid size-14 place-items-center rounded-lg border border-dashed border-[var(--border)] bg-[var(--background)] text-[var(--muted)] mb-3">
+            <Icons.PlusCircle className="size-7" weight="regular" />
           </div>
+          <h3 className="font-display text-xl font-bold text-center">Homebrew</h3>
+          <p className="mt-2 font-editorial text-sm text-[var(--muted)] text-center max-w-xs">
+            Create a custom class with your Dungeon Master.
+          </p>
         </button>
       </div>
-
-      {currentClassId && (
-        <p className="mt-4 font-sans text-xs text-[var(--muted)]">
-          Current class: <span className="font-medium capitalize">{currentClassId}</span>
-        </p>
-      )}
-    </fieldset>
+    </div>
   );
 }
