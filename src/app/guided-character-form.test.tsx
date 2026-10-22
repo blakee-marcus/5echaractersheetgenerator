@@ -121,17 +121,63 @@ describe("GuidedCharacterForm", () => {
     expect(screen.getByRole("group", { name: "Combat" })).toBeTruthy();
   });
 
-  it("updates identity while preserving untouched character sections", () => {
+  it("updates the Identity race field when a catalog lineage is confirmed", () => {
     render(<Harness />);
 
-    fireEvent.change(
-      screen.getByRole("textbox", { name: "Character name" }),
-      { target: { value: "Seraphine Vale" } },
-    );
+    // Confirm Hill Dwarf in the Race chapter
+    fireEvent.click(screen.getByRole("button", { name: "Choose Dwarf" }));
+    fireEvent.click(document.querySelector(`input[name="subrace"][value="hill-dwarf"]`)!);
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Hill Dwarf" }));
 
-    const character = currentCharacter();
-    expect(character.identity?.characterName).toBe("Seraphine Vale");
-    expect(character.spellcasting).toEqual(exampleCharacter.spellcasting);
+    // Navigate to Identity and verify the race field reflects the exact lineage
+    fireEvent.click(screen.getByRole("button", { name: "Identity" }));
+    expect(
+      screen.getByRole<HTMLInputElement>("textbox", { name: "Species / race" }).value,
+    ).toBe("Hill Dwarf");
+
+    // Switch to Wood Elf and confirm
+    fireEvent.click(screen.getByRole("button", { name: "Choose Race" }));
+    fireEvent.click(screen.getByRole("button", { name: "Choose Elf" }));
+    fireEvent.click(document.querySelector(`input[name="subrace"][value="wood-elf"]`)!);
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Wood Elf" }));
+
+    // Return to Identity and confirm the field updated to the new exact lineage
+    fireEvent.click(screen.getByRole("button", { name: "Identity" }));
+    expect(
+      screen.getByRole<HTMLInputElement>("textbox", { name: "Species / race" }).value,
+    ).toBe("Wood Elf");
+  });
+
+  it("preserves a custom race entry unless a catalog race is explicitly confirmed", () => {
+    render(<Harness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Identity" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Species / race" }), {
+      target: { value: "Aarakocra" },
+    });
+    expect(currentCharacter().identity?.race).toBe("Aarakocra");
+
+    // Preview a catalog race without confirming — custom entry must survive
+    fireEvent.click(screen.getByRole("button", { name: "Choose Race" }));
+    fireEvent.click(screen.getByRole("button", { name: "Choose Elf" }));
+    expect(screen.getByRole("heading", { name: "Elf" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Back to races" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Identity" }));
+    expect(
+      screen.getByRole<HTMLInputElement>("textbox", { name: "Species / race" }).value,
+    ).toBe("Aarakocra");
+
+    // Now explicitly confirm a catalog race — custom entry is replaced
+    fireEvent.click(screen.getByRole("button", { name: "Choose Race" }));
+    fireEvent.click(screen.getByRole("button", { name: "Choose Elf" }));
+    fireEvent.click(document.querySelector(`input[name="subrace"][value="high-elf"]`)!);
+    fireEvent.click(screen.getByRole("button", { name: "Confirm High Elf" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Identity" }));
+    expect(
+      screen.getByRole<HTMLInputElement>("textbox", { name: "Species / race" }).value,
+    ).toBe("High Elf");
   });
 
   it("updates manual ability and saving-throw values without deriving them", () => {
