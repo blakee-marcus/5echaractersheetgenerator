@@ -37,4 +37,11 @@ export {
   CaretDown,
   Check,
   X,
+  Ruler,
+  SneakerMove,
+  BoundingBox,
+  Globe,
+  Eye,
+  Moon,
+  Clover,
 } from "@phosphor-icons/react";

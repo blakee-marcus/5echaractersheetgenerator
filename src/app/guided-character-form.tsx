@@ -32,6 +32,7 @@ import {
 } from "./guided-character-details";
 import { SpellcastingSection } from "./guided-spellcasting-section";
 import { ClassSelection } from "./class-selection-section";
+import { RaceSelection } from "./race-selection-section";
 
 interface GuidedCharacterFormProps {
   character: CharacterSheet;
@@ -41,6 +42,7 @@ interface GuidedCharacterFormProps {
 type AbilityName = keyof NonNullable<CharacterSheet["abilities"]>;
 
 const navItems = [
+  { id: "race", label: "Choose Race", icon: "UserCircle" },
   { id: "class", label: "Choose Class", icon: "Shield" },
   { id: "identity", label: "Identity", icon: "UserCircle" },
   { id: "abilities", label: "Abilities", icon: "Heart" },
@@ -205,7 +207,7 @@ export function GuidedCharacterForm({
   character,
   onChange,
 }: GuidedCharacterFormProps) {
-  const [activeSection, setActiveSection] = useState<SectionId>("class");
+  const [activeSection, setActiveSection] = useState<SectionId>("race");
   const [generationMethod, setGenerationMethod] = useState<GenerationMethod>(
     "manual",
   );
@@ -381,6 +383,13 @@ export function GuidedCharacterForm({
       <p className="font-sans text-sm font-bold text-[var(--muted)] xl:hidden" aria-live="polite">
         Section {activeSectionIndex + 1} of {navItems.length}
       </p>
+
+      <div className={sectionPanelClass("race")} data-editor-section="race">
+      <RaceSelection
+        character={character}
+        onChange={onChange}
+      />
+      </div>
 
       <div className={sectionPanelClass("class")} data-editor-section="class">
       <ClassSelection

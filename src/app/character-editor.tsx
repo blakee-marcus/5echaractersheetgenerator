@@ -367,7 +367,7 @@ export function CharacterEditor({ initialCharacter }: CharacterEditorProps) {
           Shape a character worth remembering
         </h1>
         <p className="mt-3 max-w-3xl text-lg leading-7 text-[var(--muted)]">
-          Work through each chapter, enter the values your table uses, and export a
+          Start by choosing your race, then your class, and work through each chapter to export a
           three-page editable character sheet. Rules calculations remain in your hands.
         </p>
       </section>

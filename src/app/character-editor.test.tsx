@@ -293,6 +293,11 @@ describe("CharacterEditor", () => {
     } as Response);
     render(<CharacterEditor initialCharacter={exampleCharacter} />);
 
+    // Race selection step: choose Elf / Wood Elf
+    fireEvent.click(screen.getByRole("button", { name: "Choose Elf" }));
+    fireEvent.click(document.querySelector('input[name="subrace"][value="wood-elf"]') as Element);
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Wood Elf" }));
+
     fireEvent.change(screen.getByRole("textbox", { name: "Character name" }), {
       target: { value: "Seraphine Vale" },
     });
@@ -366,6 +371,7 @@ describe("CharacterEditor", () => {
     const request = fetchMock.mock.calls[0]?.[1];
     const submitted = JSON.parse(String(request?.body));
     expect(submitted.identity.characterName).toBe("Seraphine Vale");
+    expect(submitted.identity.race).toBe("Wood Elf");
     expect(submitted.abilities).toMatchObject({
       strength: { score: 15 },
       dexterity: { score: 14 },

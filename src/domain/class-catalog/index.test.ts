@@ -7,7 +7,6 @@ import {
   validateClassDefinition,
   CLASS_EDITION,
   CLASS_SOURCE,
-  type ClassDefinition,
 } from "./index";
 
 describe("2014 Class Catalog", () => {

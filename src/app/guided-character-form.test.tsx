@@ -40,10 +40,13 @@ describe("GuidedCharacterForm", () => {
     const sectionButtons = Array.from(
       sectionNavigation.querySelectorAll<HTMLButtonElement>("button"),
     );
-    expect(sectionButtons).toHaveLength(12);
+    expect(sectionButtons).toHaveLength(13);
 
     const classPanel = document.querySelector<HTMLElement>(
       '[data-editor-section="class"]',
+    );
+    const racePanel = document.querySelector<HTMLElement>(
+      '[data-editor-section="race"]',
     );
     const identityPanel = document.querySelector<HTMLElement>(
       '[data-editor-section="identity"]',
@@ -51,32 +54,34 @@ describe("GuidedCharacterForm", () => {
     const abilitiesPanel = document.querySelector<HTMLElement>(
       '[data-editor-section="abilities"]',
     );
-    expect(classPanel?.className).not.toContain("hidden");
+    expect(classPanel?.className).toContain("hidden");
+    expect(racePanel?.className).not.toContain("hidden");
     expect(identityPanel?.className).toContain("hidden");
     expect(abilitiesPanel?.className).toContain("hidden");
 
-    // Start on Class section, navigate to Identity
+    // Start on Race section, navigate to Class
+    fireEvent.click(screen.getByRole("button", { name: "Choose Class" }));
+
+    expect(racePanel?.className).toContain("hidden");
+    expect(classPanel?.className).not.toContain("hidden");
+    expect(screen.getByText("Section 2 of 13")).toBeTruthy();
+
+    // Navigate to Identity
+    fireEvent.click(screen.getByRole("button", { name: "Identity" }));
+    expect(classPanel?.className).toContain("hidden");
+    expect(identityPanel?.className).not.toContain("hidden");
+    expect(screen.getByText("Section 3 of 13")).toBeTruthy();
+
+    // Navigate back to Class - value should be preserved... no change there
+    fireEvent.click(screen.getByRole("button", { name: "Choose Class" }));
+    expect(classPanel?.className).not.toContain("hidden");
+    expect(identityPanel?.className).toContain("hidden");
+
+    // Navigate to Identity and set name
+    fireEvent.click(screen.getByRole("button", { name: "Identity" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Character name" }), {
       target: { value: "Seraphine Vale" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Identity" }));
-
-    expect(classPanel?.className).toContain("hidden");
-    expect(identityPanel?.className).not.toContain("hidden");
-    expect(screen.getByText("Section 2 of 12")).toBeTruthy();
-
-    // Navigate to Abilities
-    fireEvent.click(screen.getByRole("button", { name: "Abilities" }));
-    expect(identityPanel?.className).toContain("hidden");
-    expect(abilitiesPanel?.className).not.toContain("hidden");
-    expect(screen.getByText("Section 3 of 12")).toBeTruthy();
-
-    // Navigate back to Identity - value should be preserved
-    fireEvent.click(screen.getByRole("button", { name: "Identity" }));
-    expect(
-      screen.getByRole<HTMLInputElement>("textbox", { name: "Character name" })
-        .value,
-    ).toBe("Seraphine Vale");
   });
 
   it("exposes the live character summary in a mobile disclosure before the editor", () => {
