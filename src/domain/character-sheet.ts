@@ -110,6 +110,7 @@ export const characterSheetSchema = strictObject({
     alignment: z.string().optional(),
     playerName: z.string().optional(),
     experiencePoints: integer.optional(),
+    classChoices: z.record(z.string(), z.string()).optional(),
   }).optional(),
   inspiration: z.boolean().optional(),
   passivePerception: integer.optional(),

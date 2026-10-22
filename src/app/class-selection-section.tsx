@@ -73,51 +73,27 @@ const CLASS_COMPLEXITY: Record<string, { label: string; description: string }> =
 function ClassCard({
   cls,
   isSelected,
-  isExpanded,
   onSelect,
-  onExpand,
 }: {
   cls: ClassDefinition;
   isSelected: boolean;
-  isExpanded: boolean;
   onSelect: () => void;
-  onExpand: () => void;
 }) {
   const IconComponent = Icons[CLASS_ICON_MAP[cls.id]] ?? Icons.BookOpen;
   const playstyles = CLASS_PLAYSTYLE[cls.id] ?? [];
   const complexity = CLASS_COMPLEXITY[cls.id] ?? { label: "&mdash;", description: "" };
 
   return (
-    <div
-      className={`relative rounded-xl border-2 p-5 transition-all ${
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`relative rounded-xl border-2 p-5 transition-all flex flex-col h-full ${
         isSelected
           ? "border-[var(--accent)] bg-[var(--parchment)] shadow-[0_0_0_2px_var(--accent)]"
           : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)] hover:bg-[var(--parchment)]"
-      } ${isExpanded ? "z-10" : ""}`}
-      role="button"
-      tabIndex={0}
+      }`}
       aria-pressed={isSelected}
-      aria-expanded={isExpanded}
-      onClick={onSelect}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onSelect();
-        }
-      }}
     >
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onExpand();
-        }}
-        className="absolute top-3 right-3 p-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)] hover:border-[var(--accent)] transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
-        aria-label={isExpanded ? `Collapse ${cls.name} details` : `Expand ${cls.name} details`}
-      >
-        <Icons.CaretDown className={`size-5 transition-transform ${isExpanded ? "rotate-180" : ""}`} weight="regular" />
-      </button>
-
       <div className="flex items-start gap-4">
         <div className="flex-shrink-0 grid size-14 place-items-center rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--accent)]">
           <IconComponent className="size-7" weight="regular" />
@@ -125,99 +101,45 @@ function ClassCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-3 flex-wrap">
             <h3 className="font-display text-xl font-bold truncate">{cls.name}</h3>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[0.65rem] font-bold uppercase tracking-wide bg-[var(--parchment)] border border-[var(--border)] text-[var(--muted)]">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide bg-[var(--parchment)] border border-[var(--border)] text-[var(--muted)]">
               d{cls.hitDie} Hit Die
             </span>
           </div>
 
-          <p className="mt-2 font-editorial text-sm text-[var(--ink)] leading-relaxed">
+          <p className="mt-2 font-editorial text-sm text-[var(--ink)] leading-relaxed line-clamp-3">
             {cls.description}
           </p>
 
           <div className="mt-3 flex flex-wrap gap-2">
-            {playstyles.map((ps, i) => (
+            {playstyles.slice(0, 2).map((ps, i) => (
               <span
                 key={i}
-                className="inline-flex items-center px-2 py-1 rounded-full text-[0.65rem] font-bold uppercase tracking-wide"
+                className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold uppercase tracking-wide"
                 style={{ backgroundColor: `${ps.color}15`, borderColor: `${ps.color}40`, color: ps.color }}
               >
                 {ps.label}
               </span>
             ))}
-            <span className="inline-flex items-center px-2 py-1 rounded-full text-[0.65rem] font-bold uppercase tracking-wide bg-[var(--parchment)] border border-[var(--border)] text-[var(--muted)]">
+            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold uppercase tracking-wide bg-[var(--parchment)] border border-[var(--border)] text-[var(--muted)]">
               {complexity.label}
             </span>
           </div>
-
-          {isExpanded && (
-            <div className="mt-4 pt-4 border-t border-[var(--border)] space-y-3">
-              <dl className="grid grid-cols-2 gap-2 font-sans text-sm">
-                <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Primary Abilities</dt>
-                <dd className="font-medium">{cls.primaryAbilities.map((a) => a.toUpperCase()).join(" / ")}</dd>
-                <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Saving Throws</dt>
-                <dd className="font-medium">{cls.proficiencies.savingThrows?.map((s) => s.toUpperCase()).join(", ") ?? "&mdash;"}</dd>
-                {cls.spellcasting && (
-                  <>
-                    <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Spellcasting</dt>
-                    <dd className="font-medium">
-                      {cls.spellcasting.ability.toUpperCase()} ({cls.spellcasting.progression["1"]?.slots ? "Full" : "Ritual/Level 2+"})
-                    </dd>
-                  </>
-                )}
-              </dl>
-
-              <div>
-                <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-1">Proficiencies</dt>
-                <div className="flex flex-wrap gap-1.5">
-                  {cls.proficiencies.armor?.map((a) => (
-                    <span key={a} className="px-2 py-0.5 rounded text-[0.6rem] font-medium bg-[var(--parchment)] border border-[var(--border)] text-[var(--muted)]">
-                      Armor: {a}
-                    </span>
-                  ))}
-                  {cls.proficiencies.weapons?.map((w) => (
-                    <span key={w} className="px-2 py-0.5 rounded text-[0.6rem] font-medium bg-[var(--parchment)] border border-[var(--border)] text-[var(--muted)]">
-                      Weapons: {w}
-                    </span>
-                  ))}
-                  {cls.proficiencies.tools?.map((t) => (
-                    <span key={t} className="px-2 py-0.5 rounded text-[0.6rem] font-medium bg-[var(--parchment)] border border-[var(--border)] text-[var(--muted)]">
-                      {t.replace(/([A-Z])/g, " $1").trim()}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-1">Complexity</dt>
-                <dd className="font-sans text-sm text-[var(--ink)]">{complexity.description}</dd>
-              </div>
-
-              {cls.subclass && (
-                <div className="rounded-lg border border-[var(--border)] bg-[var(--parchment)] p-3">
-                  <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-1">Subclass at Level {cls.subclass.level}</dt>
-                  <dd className="font-display text-sm font-bold">{cls.subclass.name}</dd>
-                  <p className="mt-1 font-editorial text-sm text-[var(--ink)]">{cls.subclass.description}</p>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-end gap-3">
-        {!isSelected && (
-          <span className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] font-sans text-sm font-bold">
-            Click to choose
-          </span>
-        )}
-        {isSelected && (
-          <span className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--accent)] text-white font-sans text-sm font-bold">
+      <div className="mt-auto pt-4 border-t border-[var(--border)]">
+        {isSelected ? (
+          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)] text-white font-sans text-sm font-bold w-full justify-center">
             <Icons.Check className="size-4" weight="regular" />
-            Selected
+            Selected &mdash; View details
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] font-sans text-sm font-bold w-full justify-center">
+            Choose {cls.name}
           </span>
         )}
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -246,7 +168,7 @@ function ClassDetailPanel({
   const allRequiredFilled = requiredChoices.every((field) => choices[field]);
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 max-w-4xl">
       <button
         type="button"
         onClick={onBack}
@@ -256,13 +178,13 @@ function ClassDetailPanel({
         Back to classes
       </button>
 
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6">
-        <header className="flex items-start justify-between gap-4">
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 md:p-8">
+        <header className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
           <div>
-            <h2 className="font-display text-2xl font-bold">{cls.name}</h2>
-            <p className="mt-1 font-editorial text-base text-[var(--ink)] leading-relaxed">{cls.description}</p>
+            <h2 className="font-display text-2xl md:text-3xl font-bold">{cls.name}</h2>
+            <p className="mt-1 font-editorial text-base md:text-lg text-[var(--ink)] leading-relaxed">{cls.description}</p>
           </div>
-          <span className="flex-shrink-0 inline-flex items-center px-3 py-1 rounded-full text-[0.65rem] font-bold uppercase tracking-wide bg-[var(--parchment)] border border-[var(--border)] text-[var(--muted)]">
+          <span className="flex-shrink-0 inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide bg-[var(--parchment)] border border-[var(--border)] text-[var(--muted)]">
             d{cls.hitDie} Hit Die
           </span>
         </header>
@@ -286,40 +208,40 @@ function ClassDetailPanel({
 
         <section className="mt-6">
           <h3 className="font-display text-lg font-bold mb-3">What you&apos;ll do</h3>
-          <p className="font-editorial text-base text-[var(--ink)] leading-relaxed">
+          <p className="font-editorial text-base md:text-lg text-[var(--ink)] leading-relaxed max-w-3xl">
             {cls.level1Features.map((f) => f.description).join(" ")}
           </p>
         </section>
 
         <section className="mt-6">
           <h3 className="font-display text-lg font-bold mb-3">Your strengths</h3>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {cls.proficiencies.armor?.length && (
-              <div className="rounded-lg border border-[var(--border)] p-4 bg-[var(--parchment)]">
+              <div className="rounded-lg border border-[var(--border)] p-5 bg-[var(--parchment)]">
                 <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-2">Armor</dt>
                 <dd className="font-sans text-sm text-[var(--ink)] leading-relaxed">{cls.proficiencies.armor.join(", ")}</dd>
               </div>
             )}
             {cls.proficiencies.weapons?.length && (
-              <div className="rounded-lg border border-[var(--border)] p-4 bg-[var(--parchment)]">
+              <div className="rounded-lg border border-[var(--border)] p-5 bg-[var(--parchment)]">
                 <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-2">Weapons</dt>
                 <dd className="font-sans text-sm text-[var(--ink)] leading-relaxed">{cls.proficiencies.weapons.join(", ")}</dd>
               </div>
             )}
             {cls.proficiencies.tools?.length && (
-              <div className="rounded-lg border border-[var(--border)] p-4 bg-[var(--parchment)]">
+              <div className="rounded-lg border border-[var(--border)] p-5 bg-[var(--parchment)]">
                 <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-2">Tools</dt>
                 <dd className="font-sans text-sm text-[var(--ink)] leading-relaxed">{cls.proficiencies.tools.map((t) => t.replace(/([A-Z])/g, " $1").trim()).join(", ")}</dd>
               </div>
             )}
             {cls.proficiencies.savingThrows?.length && (
-              <div className="rounded-lg border border-[var(--border)] p-4 bg-[var(--parchment)]">
+              <div className="rounded-lg border border-[var(--border)] p-5 bg-[var(--parchment)]">
                 <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-2">Saving Throws</dt>
                 <dd className="font-sans text-sm text-[var(--ink)] leading-relaxed">{cls.proficiencies.savingThrows.map((s) => s.toUpperCase()).join(", ")}</dd>
               </div>
             )}
             {cls.proficiencies.skills && (
-              <div className="rounded-lg border border-[var(--border)] p-4 bg-[var(--parchment)] sm:col-span-2 lg:col-span-1">
+              <div className="rounded-lg border border-[var(--border)] p-5 bg-[var(--parchment)] sm:col-span-2 lg:col-span-3">
                 <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-2">Skills (choose {cls.proficiencies.skills.choose})</dt>
                 <dd className="font-sans text-sm text-[var(--ink)] leading-relaxed">{cls.proficiencies.skills.from.map((s) => s.replace(/([A-Z])/g, " $1").trim()).join(", ")}</dd>
               </div>
@@ -329,7 +251,7 @@ function ClassDetailPanel({
 
         <section className="mt-6">
           <h3 className="font-display text-lg font-bold mb-3">What you gain at level 1</h3>
-          <ul className="space-y-4">
+          <ul className="space-y-5">
             {cls.level1Features.map((feature: ClassFeature) => (
               <li key={feature.name} className="rounded-lg border border-[var(--border)] p-5 bg-[var(--parchment)]">
                 <h4 className="font-display text-lg font-bold">{feature.name}</h4>
@@ -578,7 +500,6 @@ export function ClassSelection({
   onClassSelected,
 }: ClassSelectionProps) {
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
-  const [expandedClassId, setExpandedClassId] = useState<string | null>(null);
   const [showHomebrew, setShowHomebrew] = useState(false);
   const [homebrewClasses, setHomebrewClasses] = useState<ClassDefinition[]>([]);
 
@@ -588,11 +509,7 @@ export function ClassSelection({
     setSelectedClassId(classId);
   };
 
-  const handleExpand = (classId: string) => {
-    setExpandedClassId(expandedClassId === classId ? null : classId);
-  };
-
-  const handleApplyClass = () => {
+  const handleApplyClass = (selectedChoices: Record<string, string>) => {
     const cls = getClassById(selectedClassId!) ?? homebrewClasses.find((c) => c.id === selectedClassId);
     if (!cls) return;
 
@@ -610,12 +527,22 @@ export function ClassSelection({
       nextCharacter = updateAbilitySavingThrow(nextCharacter, save as "strength" | "dexterity" | "constitution" | "intelligence" | "wisdom" | "charisma", { proficient: true });
     });
 
+    // Apply selected class feature choices (fighting style, divine domain, etc.)
+    const classChoices: Record<string, string> = {};
+    Object.entries(selectedChoices).forEach(([field, value]) => {
+      if (value) {
+        classChoices[field] = value;
+      }
+    });
+    if (Object.keys(classChoices).length > 0) {
+      nextCharacter = updateIdentity(nextCharacter, "classChoices", classChoices);
+    }
+
     nextCharacter = { ...nextCharacter, proficiencyBonus: 2 };
 
     onChange(nextCharacter);
     onClassSelected?.(cls.id);
     setSelectedClassId(null);
-    setExpandedClassId(null);
   };
 
   const handleHomebrewCreate = (customClass: ClassDefinition) => {
@@ -635,10 +562,7 @@ export function ClassSelection({
       <ClassDetailPanel
         cls={cls}
         onApply={handleApplyClass}
-        onBack={() => {
-          setSelectedClassId(null);
-          setExpandedClassId(null);
-        }}
+        onBack={() => setSelectedClassId(null)}
       />
     );
   }
@@ -646,8 +570,8 @@ export function ClassSelection({
   return (
     <div className="space-y-6">
       <div className="text-center" role="heading" aria-level={2}>
-        <h2 className="font-display text-2xl font-bold">Choose Your Class</h2>
-        <p className="mt-2 font-editorial text-base text-[var(--ink)] leading-relaxed max-w-2xl mx-auto">
+        <h2 className="font-display text-2xl md:text-3xl font-bold">Choose Your Class</h2>
+        <p className="mt-2 font-editorial text-base md:text-lg text-[var(--ink)] leading-relaxed max-w-2xl mx-auto">
           Your class defines your capabilities, your role in the party, and how you&apos;ll grow.
           Read each description and pick what sounds fun &mdash; you can customize the details afterward.
         </p>
@@ -658,21 +582,19 @@ export function ClassSelection({
         )}
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}>
         {CLASS_CATALOG.map((cls) => (
           <ClassCard
             key={cls.id}
             cls={cls}
             isSelected={selectedClassId === cls.id}
-            isExpanded={expandedClassId === cls.id}
             onSelect={() => handleClassSelect(cls.id)}
-            onExpand={() => handleExpand(cls.id)}
           />
         ))}
         <button
           type="button"
           onClick={() => setShowHomebrew(true)}
-          className="relative rounded-xl border-2 border-dashed border-[var(--border)] bg-[var(--surface)] p-5 transition hover:border-[var(--accent)] hover:bg-[var(--parchment)] flex flex-col items-center justify-center min-h-[320px]"
+          className="relative rounded-xl border-2 border-dashed border-[var(--border)] bg-[var(--surface)] p-5 transition hover:border-[var(--accent)] hover:bg-[var(--parchment)] flex flex-col items-center justify-center min-h-[280px]"
         >
           <div className="flex-shrink-0 grid size-14 place-items-center rounded-lg border border-dashed border-[var(--border)] bg-[var(--background)] text-[var(--muted)] mb-3">
             <Icons.PlusCircle className="size-7" weight="regular" />
