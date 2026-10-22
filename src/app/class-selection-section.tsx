@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback, forwardRef } from "react";
 import {
   CLASS_CATALOG,
   getClassById,
@@ -16,7 +16,12 @@ import {
   TextareaField,
 } from "./character-form-controls";
 import type { CharacterSheet } from "../domain/character-sheet";
-import { updateIdentity, updateHitDice, updateHitPoints, updateAbilitySavingThrow } from "./character-editor-state";
+import {
+  updateIdentity,
+  updateHitDice,
+  updateHitPoints,
+  updateAbilitySavingThrow,
+} from "./character-editor-state";
 
 export interface ClassSelectionProps {
   character: CharacterSheet;
@@ -41,18 +46,18 @@ const CLASS_ICON_MAP: Record<string, keyof typeof Icons> = {
 };
 
 const CLASS_PLAYSTYLE: Record<string, { label: string; color: string }[]> = {
-  barbarian: [{ label: "Melee", color: "var(--accent)" }, { label: "Tank", color: "var(--moss)" }],
-  bard: [{ label: "Support", color: "var(--arcane)" }, { label: "Control", color: "var(--gold)" }, { label: "Utility", color: "var(--moss)" }],
-  cleric: [{ label: "Support", color: "var(--arcane)" }, { label: "Tank", color: "var(--moss)" }, { label: "Healer", color: "var(--gold)" }],
-  druid: [{ label: "Control", color: "var(--moss)" }, { label: "Utility", color: "var(--arcane)" }, { label: "Healer", color: "var(--gold)" }],
-  fighter: [{ label: "Melee", color: "var(--accent)" }, { label: "Tank", color: "var(--moss)" }, { label: "Ranged", color: "var(--gold)" }],
-  monk: [{ label: "Melee", color: "var(--accent)" }, { label: "Striker", color: "var(--gold)" }, { label: "Mobility", color: "var(--moss)" }],
-  paladin: [{ label: "Melee", color: "var(--accent)" }, { label: "Tank", color: "var(--moss)" }, { label: "Support", color: "var(--gold)" }],
-  ranger: [{ label: "Ranged", color: "var(--gold)" }, { label: "Explorer", color: "var(--moss)" }, { label: "Striker", color: "var(--accent)" }],
-  rogue: [{ label: "Striker", color: "var(--accent)" }, { label: "Skill Monkey", color: "var(--arcane)" }, { label: "Utility", color: "var(--moss)" }],
-  sorcerer: [{ label: "Blaster", color: "var(--accent)" }, { label: "Control", color: "var(--arcane)" }, { label: "Metamagic", color: "var(--gold)" }],
-  warlock: [{ label: "Blaster", color: "var(--accent)" }, { label: "Control", color: "var(--arcane)" }, { label: "Utility", color: "var(--moss)" }],
-  wizard: [{ label: "Control", color: "var(--arcane)" }, { label: "Utility", color: "var(--moss)" }, { label: "Blaster", color: "var(--gold)" }],
+  barbarian: [{ label: "Martial", color: "var(--accent)" }, { label: "Tank", color: "var(--moss)" }],
+  bard: [{ label: "Spellcaster", color: "var(--arcane)" }, { label: "Support", color: "var(--gold)" }],
+  cleric: [{ label: "Spellcaster", color: "var(--arcane)" }, { label: "Healer", color: "var(--gold)" }],
+  druid: [{ label: "Spellcaster", color: "var(--arcane)" }, { label: "Control", color: "var(--moss)" }],
+  fighter: [{ label: "Martial", color: "var(--accent)" }, { label: "Tank", color: "var(--moss)" }],
+  monk: [{ label: "Martial", color: "var(--accent)" }, { label: "Striker", color: "var(--gold)" }],
+  paladin: [{ label: "Martial", color: "var(--accent)" }, { label: "Spellcaster", color: "var(--arcane)" }],
+  ranger: [{ label: "Martial", color: "var(--accent)" }, { label: "Spellcaster", color: "var(--arcane)" }],
+  rogue: [{ label: "Martial", color: "var(--accent)" }, { label: "Skill Monkey", color: "var(--arcane)" }],
+  sorcerer: [{ label: "Spellcaster", color: "var(--arcane)" }, { label: "Blaster", color: "var(--accent)" }],
+  warlock: [{ label: "Spellcaster", color: "var(--arcane)" }, { label: "Blaster", color: "var(--accent)" }],
+  wizard: [{ label: "Spellcaster", color: "var(--arcane)" }, { label: "Control", color: "var(--moss)" }],
 };
 
 const CLASS_COMPLEXITY: Record<string, { label: string; description: string }> = {
@@ -70,29 +75,124 @@ const CLASS_COMPLEXITY: Record<string, { label: string; description: string }> =
   wizard: { label: "Complex", description: "Spellbook, prepared spells, arcane recovery" },
 };
 
-function ClassCard({
-  cls,
-  isSelected,
-  onSelect,
-}: {
+// ---- Helpers ----
+
+type AbilityName = "strength" | "dexterity" | "constitution" | "intelligence" | "wisdom" | "charisma";
+
+function getAppliedClassId(character: CharacterSheet): string | null {
+  const classAndLevel = character.identity?.classAndLevel?.trim();
+  if (!classAndLevel) return null;
+  const name = classAndLevel.split(" ")[0]?.toLowerCase();
+  return name && CLASS_CATALOG.some((c) => c.id === name) ? name : null;
+}
+
+function getClassGrantedSavingThrows(cls: ClassDefinition): string[] {
+  return cls.proficiencies.savingThrows ?? [];
+}
+
+function getAllLevel1Choices(cls: ClassDefinition): Array<{
+  field: string;
+  prompt: string;
+  options: string[];
+  required: boolean;
+  source: "feature" | "skill";
+}> {
+  const choices: Array<{
+    field: string;
+    prompt: string;
+    options: string[];
+    required: boolean;
+    source: "feature" | "skill";
+  }> = [];
+
+  // Feature choices
+  cls.level1Features.forEach((f) => {
+    f.choices?.forEach((c) => {
+      choices.push({ ...c, source: "feature" });
+    });
+  });
+
+  // Skill choices (from proficiencies.skills)
+  const skills = cls.proficiencies.skills;
+  if (skills && skills.choose > 0 && skills.from.length > 0) {
+    choices.push({
+      field: "skills",
+      prompt: `Choose ${skills.choose} skill${skills.choose > 1 ? "s" : ""}`,
+      options: skills.from.map((s) => s.replace(/([A-Z])/g, " $1").trim()),
+      required: true,
+      source: "skill",
+    });
+  }
+
+  return choices;
+}
+
+function clearClassSavingThrows(character: CharacterSheet, oldClass: ClassDefinition): CharacterSheet {
+  let next = character;
+  const oldSaves = getClassGrantedSavingThrows(oldClass);
+  oldSaves.forEach((save) => {
+    next = updateAbilitySavingThrow(next, save as AbilityName, { proficient: false, bonus: undefined });
+  });
+  return next;
+}
+
+function isNewLevel1Character(character: CharacterSheet): boolean {
+  const level = parseInt(character.identity?.classAndLevel?.split(" ")[1] ?? "0", 10);
+  return !character.identity?.classAndLevel || level <= 1;
+}
+
+// ---- Persistence for draft choices ----
+
+const DRAFT_STORAGE_KEY = "nyx-character-forge:class-drafts";
+
+function loadDraftChoices(): Record<string, Record<string, string>> {
+  if (typeof window === "undefined") return {};
+  try {
+    const stored = localStorage.getItem(DRAFT_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveDraftChoices(drafts: Record<string, Record<string, string>>): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(drafts));
+  } catch {
+    // ignore quota/private browsing
+  }
+}
+
+// ---- Components ----
+
+const ClassCard = forwardRef<HTMLButtonElement, {
   cls: ClassDefinition;
-  isSelected: boolean;
+  state: "default" | "applied" | "previewed";
   onSelect: () => void;
-}) {
+  onFocus: () => void;
+}>(({ cls, state, onSelect, onFocus }, ref) => {
   const IconComponent = Icons[CLASS_ICON_MAP[cls.id]] ?? Icons.BookOpen;
   const playstyles = CLASS_PLAYSTYLE[cls.id] ?? [];
   const complexity = CLASS_COMPLEXITY[cls.id] ?? { label: "&mdash;", description: "" };
 
+  const isApplied = state === "applied";
+  const isPreviewed = state === "previewed";
+
   return (
     <button
+      ref={ref}
       type="button"
       onClick={onSelect}
+      onFocus={onFocus}
       className={`relative rounded-xl border-2 p-5 transition-all flex flex-col h-full ${
-        isSelected
+        isApplied
           ? "border-[var(--accent)] bg-[var(--parchment)] shadow-[0_0_0_2px_var(--accent)]"
+          : isPreviewed
+          ? "border-[var(--focus)] bg-[var(--surface)] ring-2 ring-[var(--focus)]/20"
           : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)] hover:bg-[var(--parchment)]"
       }`}
-      aria-pressed={isSelected}
+      aria-pressed={isApplied}
     >
       <div className="flex items-start gap-4">
         <div className="flex-shrink-0 grid size-14 place-items-center rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--accent)]">
@@ -101,9 +201,12 @@ function ClassCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-3 flex-wrap">
             <h3 className="font-display text-xl font-bold truncate">{cls.name}</h3>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide bg-[var(--parchment)] border border-[var(--border)] text-[var(--muted)]">
-              d{cls.hitDie} Hit Die
-            </span>
+            {isApplied && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide bg-[var(--accent)] text-white">
+                <Icons.Check className="size-3" weight="regular" />
+                Current
+              </span>
+            )}
           </div>
 
           <p className="mt-2 font-editorial text-sm text-[var(--ink)] leading-relaxed line-clamp-3">
@@ -128,175 +231,184 @@ function ClassCard({
       </div>
 
       <div className="mt-auto pt-4 border-t border-[var(--border)]">
-        {isSelected ? (
-          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)] text-white font-sans text-sm font-bold w-full justify-center">
+        {isApplied ? (
+          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[var(--accent)] bg-[var(--surface)] text-[var(--accent)] font-sans text-sm font-bold w-full justify-center">
             <Icons.Check className="size-4" weight="regular" />
-            Selected &mdash; View details
+            Your class
           </span>
         ) : (
-          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] font-sans text-sm font-bold w-full justify-center">
-            Choose {cls.name}
+          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] font-sans text-sm font-bold w-full justify-center">
+            {isPreviewed ? "View details" : `Choose ${cls.name}`}
           </span>
         )}
       </div>
     </button>
   );
+});
+ClassCard.displayName = "ClassCard";
+
+function ChoiceField({
+  field,
+  prompt,
+  options,
+  required,
+  value,
+  onChange,
+  source,
+}: {
+  field: string;
+  prompt: string;
+  options: string[];
+  required: boolean;
+  value: string;
+  onChange: (value: string) => void;
+  source: "feature" | "skill";
+}) {
+  const selectId = `choice-${field}`;
+
+  return (
+    <div className="space-y-2">
+      <label htmlFor={selectId} className="block font-sans text-sm font-bold">
+        {prompt} {required && <span className="text-[var(--accent)]" aria-hidden="true">*</span>}
+      </label>
+      {source === "skill" && options.length <= 18 ? (
+        <fieldset className="flex flex-wrap gap-2" role="radiogroup" aria-label={prompt} aria-required={required}>
+          {options.map((opt) => (
+            <label key={opt} className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)] hover:bg-[var(--parchment)] transition cursor-pointer">
+              <input
+                type="checkbox"
+                checked={value.split(",").includes(opt)}
+                onChange={(e) => {
+                  const current = value.split(",").filter(Boolean);
+                  const next = e.target.checked
+                    ? [...current, opt]
+                    : current.filter((o) => o !== opt);
+                  onChange(next.slice(0, 4).join(",")); // max 4 for bard
+                }}
+                className="size-4 rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--focus)]"
+              />
+              <span className="font-sans text-sm">{opt}</span>
+            </label>
+          ))}
+        </fieldset>
+      ) : (
+        <select
+          id={selectId}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="min-h-11 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 font-sans text-base text-[var(--foreground)] shadow-sm outline-none transition focus:border-[var(--focus)] focus:ring-2 focus:ring-[var(--focus)]/30"
+          required={required}
+          aria-required={required}
+        >
+          <option value="">Choose...</option>
+          {options.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
+      )}
+      {required && !value && (
+        <p className="font-sans text-sm text-[var(--accent)]" role="alert">
+          This choice is required
+        </p>
+      )}
+    </div>
+  );
 }
 
 function ClassDetailPanel({
   cls,
+  initialChoices,
   onApply,
   onBack,
+  onChoicesChange,
 }: {
   cls: ClassDefinition;
+  initialChoices: Record<string, string>;
   onApply: (choices: Record<string, string>) => void;
   onBack: () => void;
+  onChoicesChange: (choices: Record<string, string>) => void;
 }) {
-  const [choices, setChoices] = useState<Record<string, string>>({});
+  const [choices, setChoices] = useState<Record<string, string>>(initialChoices);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const allChoices = getAllLevel1Choices(cls);
+  const requiredChoices = allChoices.filter((c) => c.required);
+  const filledRequired = requiredChoices.filter((c) => choices[c.field] && choices[c.field].trim() !== "");
+  const isComplete = requiredChoices.length === 0 || filledRequired.length === requiredChoices.length;
 
-  const handleChoiceChange = (field: string, value: string) => {
+  // Persist choices when they change
+  useEffect(() => {
+    onChoicesChange(choices);
+  }, [choices, onChoicesChange]);
+
+  // Focus management: focus heading on mount
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
+
+  const handleChoiceChange = useCallback((field: string, value: string) => {
     setChoices((prev) => ({ ...prev, [field]: value }));
-  };
+  }, []);
 
-  const handleApply = () => {
+  const handleApply = useCallback(() => {
     onApply(choices);
-  };
-
-  const requiredChoices = cls.level1Features.flatMap((f) =>
-    f.choices?.filter((c) => c.required).map((c) => c.field) ?? []
-  );
-  const allRequiredFilled = requiredChoices.every((field) => choices[field]);
+  }, [choices, onApply]);
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <button
-        type="button"
-        onClick={onBack}
-        className="inline-flex items-center gap-2 font-sans text-sm font-bold text-[var(--accent)] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
-      >
-        <Icons.ArrowLeft className="size-4" weight="regular" />
-        Back to classes
-      </button>
+      <div className="flex items-center justify-between gap-4">
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center gap-2 font-sans text-sm font-bold text-[var(--accent)] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
+        >
+          <Icons.ArrowLeft className="size-4" weight="regular" />
+          Back to classes
+        </button>
+        <div className="flex-shrink-0 inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide bg-[var(--parchment)] border border-[var(--border)] text-[var(--muted)]">
+          d{cls.hitDie} Hit Die
+        </div>
+      </div>
 
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 md:p-8">
-        <header className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
-          <div>
-            <h2 className="font-display text-2xl md:text-3xl font-bold">{cls.name}</h2>
-            <p className="mt-1 font-editorial text-base md:text-lg text-[var(--ink)] leading-relaxed">{cls.description}</p>
-          </div>
-          <span className="flex-shrink-0 inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide bg-[var(--parchment)] border border-[var(--border)] text-[var(--muted)]">
-            d{cls.hitDie} Hit Die
-          </span>
+        <header className="mb-6">
+          <h2 id="class-detail-heading" ref={headingRef} tabIndex={-1} className="font-display text-2xl md:text-3xl font-bold">
+            {cls.name}
+          </h2>
+          <p className="mt-1 font-editorial text-base md:text-lg text-[var(--ink)] leading-relaxed">{cls.description}</p>
         </header>
 
-        <dl className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2 font-sans text-sm border-y border-[var(--border)] py-4">
-          <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Hit Die</dt>
-          <dd className="font-mono tabular-nums text-xl">d{cls.hitDie}</dd>
-          <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Primary Abilities</dt>
-          <dd className="font-medium sm:col-span-3">{cls.primaryAbilities.map((a) => a.toUpperCase()).join(" / ")}</dd>
-          <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Saving Throws</dt>
-          <dd className="font-medium sm:col-span-3">{cls.proficiencies.savingThrows?.map((s) => s.toUpperCase()).join(", ") ?? "&mdash;"}</dd>
-          {cls.spellcasting && (
-            <>
-              <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Spellcasting</dt>
-              <dd className="font-medium sm:col-span-3">
-                {cls.spellcasting.ability.toUpperCase()} &mdash; {cls.spellcasting.progression["1"]?.cantrips ?? 0} cantrips, {cls.spellcasting.progression["1"]?.slots?.[1] ?? 0} level-1 slot(s)
-              </dd>
-            </>
-          )}
-        </dl>
-
-        <section className="mt-6">
-          <h3 className="font-display text-lg font-bold mb-3">What you&apos;ll do</h3>
-          <p className="font-editorial text-base md:text-lg text-[var(--ink)] leading-relaxed max-w-3xl">
-            {cls.level1Features.map((f) => f.description).join(" ")}
-          </p>
-        </section>
-
-        <section className="mt-6">
-          <h3 className="font-display text-lg font-bold mb-3">Your strengths</h3>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {cls.proficiencies.armor?.length && (
-              <div className="rounded-lg border border-[var(--border)] p-5 bg-[var(--parchment)]">
-                <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-2">Armor</dt>
-                <dd className="font-sans text-sm text-[var(--ink)] leading-relaxed">{cls.proficiencies.armor.join(", ")}</dd>
-              </div>
-            )}
-            {cls.proficiencies.weapons?.length && (
-              <div className="rounded-lg border border-[var(--border)] p-5 bg-[var(--parchment)]">
-                <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-2">Weapons</dt>
-                <dd className="font-sans text-sm text-[var(--ink)] leading-relaxed">{cls.proficiencies.weapons.join(", ")}</dd>
-              </div>
-            )}
-            {cls.proficiencies.tools?.length && (
-              <div className="rounded-lg border border-[var(--border)] p-5 bg-[var(--parchment)]">
-                <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-2">Tools</dt>
-                <dd className="font-sans text-sm text-[var(--ink)] leading-relaxed">{cls.proficiencies.tools.map((t) => t.replace(/([A-Z])/g, " $1").trim()).join(", ")}</dd>
-              </div>
-            )}
-            {cls.proficiencies.savingThrows?.length && (
-              <div className="rounded-lg border border-[var(--border)] p-5 bg-[var(--parchment)]">
-                <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-2">Saving Throws</dt>
-                <dd className="font-sans text-sm text-[var(--ink)] leading-relaxed">{cls.proficiencies.savingThrows.map((s) => s.toUpperCase()).join(", ")}</dd>
-              </div>
-            )}
-            {cls.proficiencies.skills && (
-              <div className="rounded-lg border border-[var(--border)] p-5 bg-[var(--parchment)] sm:col-span-2 lg:col-span-3">
-                <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-2">Skills (choose {cls.proficiencies.skills.choose})</dt>
-                <dd className="font-sans text-sm text-[var(--ink)] leading-relaxed">{cls.proficiencies.skills.from.map((s) => s.replace(/([A-Z])/g, " $1").trim()).join(", ")}</dd>
-              </div>
-            )}
-          </div>
-        </section>
-
-        <section className="mt-6">
-          <h3 className="font-display text-lg font-bold mb-3">What you gain at level 1</h3>
-          <ul className="space-y-5">
-            {cls.level1Features.map((feature: ClassFeature) => (
-              <li key={feature.name} className="rounded-lg border border-[var(--border)] p-5 bg-[var(--parchment)]">
-                <h4 className="font-display text-lg font-bold">{feature.name}</h4>
-                <p className="mt-2 font-editorial text-base text-[var(--ink)] leading-relaxed">{feature.description}</p>
-                {feature.choices?.length && (
-                  <div className="mt-4 space-y-4 border-t border-[var(--border)] pt-4">
-                    {feature.choices.map((choice) => (
-                      <div key={choice.field}>
-                        <label className="block font-sans text-sm font-bold mb-2">{choice.prompt}</label>
-                        <select
-                          value={choices[choice.field] ?? ""}
-                          onChange={(e) => handleChoiceChange(choice.field, e.target.value)}
-                          className="min-h-11 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 font-sans text-base text-[var(--foreground)] shadow-sm outline-none transition focus:border-[var(--focus)] focus:ring-2 focus:ring-[var(--focus)]/30"
-                          required={choice.required}
-                          aria-required={choice.required}
-                        >
-                          <option value="">Choose...</option>
-                          {choice.options.map((opt) => (
-                            <option key={opt} value={opt}>
-                              {opt}
-                            </option>
-                          ))}
-                        </select>
-                        {choice.required && !choices[choice.field] && (
-                          <p className="mt-1 font-sans text-sm text-[var(--accent)]">This choice is required</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        {cls.subclass && (
-          <section className="mt-6 rounded-lg border border-[var(--border)] bg-[var(--parchment)] p-5">
-            <h3 className="font-display text-lg font-bold mb-2">Upcoming Choice</h3>
-            <p className="font-editorial text-base text-[var(--ink)] leading-relaxed">
-              At level <strong>{cls.subclass.level}</strong>, you&apos;ll choose your <strong>{cls.subclass.name}</strong>: {cls.subclass.description}
+        {/* Required choices - FIRST */}
+        {requiredChoices.length > 0 && (
+          <section className="mb-6 p-5 rounded-lg border border-[var(--border)] bg-[var(--parchment)]" aria-labelledby="choices-heading">
+            <h3 id="choices-heading" className="font-display text-lg font-bold mb-3 flex items-center gap-2">
+              Build your {cls.name}
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold text-[var(--accent)] bg-[var(--accent)]/10">
+                {filledRequired.length} of {requiredChoices.length} complete
+              </span>
+            </h3>
+            <div className="space-y-4">
+              {requiredChoices.map((choice) => (
+                <ChoiceField
+                  key={choice.field}
+                  field={choice.field}
+                  prompt={choice.prompt}
+                  options={choice.options}
+                  required={choice.required}
+                  value={choices[choice.field] ?? ""}
+                  onChange={(v) => handleChoiceChange(choice.field, v)}
+                  source={choice.source}
+                />
+              ))}
+            </div>
+            <p className="mt-3 font-editorial text-sm text-[var(--muted)]">
+              Other proficiency and equipment decisions may be completed in later steps.
             </p>
           </section>
         )}
 
-        <div className="mt-6 flex items-center justify-end gap-3 border-t border-[var(--border)] pt-4">
+        <div className="flex items-center justify-end gap-3 border-t border-[var(--border)] pt-4">
           <button
             type="button"
             onClick={onBack}
@@ -309,12 +421,86 @@ function ClassDetailPanel({
             type="button"
             onClick={handleApply}
             className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--accent)] bg-[var(--accent)] px-6 py-2.5 font-sans text-sm font-extrabold text-white shadow-[0_6px_16px_rgb(118_37_31/0.18)] transition hover:border-[var(--accent-strong)] hover:bg-[var(--accent-strong)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)] disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={!allRequiredFilled}
+            disabled={!isComplete}
           >
             <Icons.Check className="size-4 mr-2" weight="regular" />
-            Become a {cls.name}
+            {isComplete ? `Confirm ${cls.name}` : "Complete required choices"}
           </button>
         </div>
+
+        {/* Expandable reference sections - AFTER choices */}
+        <details className="group">
+          <summary className="flex items-center justify-between cursor-pointer font-display text-lg font-bold py-3">
+            Learn about this class
+            <Icons.CaretDown className="size-5 transition-transform group-open:rotate-180 text-[var(--muted)]" weight="regular" />
+          </summary>
+          <div className="space-y-6 pt-4 border-t border-[var(--border)] animate-in slide-down duration-200">
+            <section>
+              <h3 className="font-display text-lg font-bold mb-3">Playstyle and strengths</h3>
+              <dl className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-sans text-sm border-y border-[var(--border)] py-4">
+                <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Hit Die</dt>
+                <dd className="font-mono tabular-nums text-xl">d{cls.hitDie}</dd>
+                <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Primary Abilities</dt>
+                <dd className="font-medium sm:col-span-3">{cls.primaryAbilities.map((a) => a.toUpperCase()).join(" / ")}</dd>
+                <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Saving Throws</dt>
+                <dd className="font-medium sm:col-span-3">{cls.proficiencies.savingThrows?.map((s) => s.toUpperCase()).join(", ") ?? "&mdash;"}</dd>
+                {cls.spellcasting && (
+                  <>
+                    <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Spellcasting</dt>
+                    <dd className="font-medium sm:col-span-3">
+                      {cls.spellcasting.ability.toUpperCase()} &mdash; {cls.spellcasting.progression["1"]?.cantrips ?? 0} cantrips, {cls.spellcasting.progression["1"]?.slots?.[1] ?? 0} level-1 slot(s)
+                    </dd>
+                  </>
+                )}
+              </dl>
+            </section>
+
+            <section className="mt-6">
+              <h3 className="font-display text-lg font-bold mb-3">Starting proficiencies</h3>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {cls.proficiencies.armor?.length && (
+                  <div className="rounded-lg border border-[var(--border)] p-5 bg-[var(--parchment)]">
+                    <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-2">Armor</dt>
+                    <dd className="font-sans text-sm text-[var(--ink)] leading-relaxed">{cls.proficiencies.armor.join(", ")}</dd>
+                  </div>
+                )}
+                {cls.proficiencies.weapons?.length && (
+                  <div className="rounded-lg border border-[var(--border)] p-5 bg-[var(--parchment)]">
+                    <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-2">Weapons</dt>
+                    <dd className="font-sans text-sm text-[var(--ink)] leading-relaxed">{cls.proficiencies.weapons.join(", ")}</dd>
+                  </div>
+                )}
+                {cls.proficiencies.tools?.length && (
+                  <div className="rounded-lg border border-[var(--border)] p-5 bg-[var(--parchment)]">
+                    <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-2">Tools</dt>
+                    <dd className="font-sans text-sm text-[var(--ink)] leading-relaxed">{cls.proficiencies.tools.map((t) => t.replace(/([A-Z])/g, " $1").trim()).join(", ")}</dd>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="mt-6">
+              <h3 className="font-display text-lg font-bold mb-3">Level 1 features</h3>
+              <ul className="space-y-4">
+                {cls.level1Features.map((feature: ClassFeature) => (
+                  <li key={feature.name} className="rounded-lg border border-[var(--border)] p-5 bg-[var(--parchment)]">
+                    <h4 className="font-display text-lg font-bold">{feature.name}</h4>
+                    <p className="mt-2 font-editorial text-base text-[var(--ink)] leading-relaxed">{feature.description}</p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            {cls.subclass && (
+              <section className="mt-6 rounded-lg border border-[var(--border)] bg-[var(--parchment)] p-5">
+                <h3 className="font-display text-lg font-bold mb-2">Upcoming Choice</h3>
+                <p className="font-editorial text-base text-[var(--ink)] leading-relaxed">
+                  At level <strong>{cls.subclass.level}</strong>, you&apos;ll choose your <strong>{cls.subclass.name}</strong>: {cls.subclass.description}
+                </p>
+              </section>
+            )}
+          </div>
+        </details>
       </div>
     </div>
   );
@@ -499,112 +685,182 @@ export function ClassSelection({
   onChange,
   onClassSelected,
 }: ClassSelectionProps) {
-  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const appliedClassId = getAppliedClassId(character);
+  const [previewedClassId, setPreviewedClassId] = useState<string | null>(null);
   const [showHomebrew, setShowHomebrew] = useState(false);
   const [homebrewClasses, setHomebrewClasses] = useState<ClassDefinition[]>([]);
+  const [draftChoices, setDraftChoices] = useState<Record<string, Record<string, string>>>(
+    () => loadDraftChoices()
+  );
+  const cardRefs = useRef<Record<string, HTMLButtonElement>>({});
+  const lastFocusedCard = useRef<string | null>(null);
 
-  const currentClassId = character.identity?.classAndLevel?.split(" ")[0]?.toLowerCase() ?? null;
+  // Persist draft choices
+  useEffect(() => {
+    saveDraftChoices(draftChoices);
+  }, [draftChoices]);
 
-  const handleClassSelect = (classId: string) => {
-    setSelectedClassId(classId);
-  };
+  const handleClassSelect = useCallback((classId: string) => {
+    lastFocusedCard.current = classId;
+    setPreviewedClassId(classId);
+  }, []);
 
-  const handleApplyClass = (selectedChoices: Record<string, string>) => {
-    const cls = getClassById(selectedClassId!) ?? homebrewClasses.find((c) => c.id === selectedClassId);
-    if (!cls) return;
-
-    let nextCharacter = character;
-
-    nextCharacter = updateIdentity(nextCharacter, "classAndLevel", `${cls.name} 1`);
-    nextCharacter = updateHitDice(nextCharacter, "denomination", `d${cls.hitDie}`);
-    nextCharacter = updateHitDice(nextCharacter, "total", 1);
-
-    const conMod = nextCharacter.abilities?.constitution?.modifier ?? 0;
-    nextCharacter = updateHitPoints(nextCharacter, "maximum", cls.hitDie + conMod);
-    nextCharacter = updateHitPoints(nextCharacter, "current", cls.hitDie + conMod);
-
-    cls.proficiencies.savingThrows?.forEach((save) => {
-      nextCharacter = updateAbilitySavingThrow(nextCharacter, save as "strength" | "dexterity" | "constitution" | "intelligence" | "wisdom" | "charisma", { proficient: true });
+  const handleBack = useCallback(() => {
+    setPreviewedClassId(null);
+    // Restore focus to the card that was selected
+    requestAnimationFrame(() => {
+      cardRefs.current[lastFocusedCard.current ?? ""]?.focus();
     });
+  }, []);
 
-    // Apply selected class feature choices (fighting style, divine domain, etc.)
-    const classChoices: Record<string, string> = {};
-    Object.entries(selectedChoices).forEach(([field, value]) => {
-      if (value) {
-        classChoices[field] = value;
+  const updateDraftChoices = useCallback((classId: string, choices: Record<string, string>) => {
+    setDraftChoices((prev) => ({ ...prev, [classId]: choices }));
+  }, []);
+
+  const handleApplyClass = useCallback(
+    (selectedChoices: Record<string, string>) => {
+      const cls = getClassById(previewedClassId!) ?? homebrewClasses.find((c) => c.id === previewedClassId);
+      if (!cls) return;
+
+      let nextCharacter = character;
+
+      // If changing from an existing class, clean up old class data
+      const oldClassId = appliedClassId;
+      if (oldClassId && oldClassId !== cls.id) {
+        const oldClass = getClassById(oldClassId);
+        if (oldClass) {
+          nextCharacter = clearClassSavingThrows(nextCharacter, oldClass);
+          nextCharacter = updateIdentity(nextCharacter, "classChoices", undefined);
+        }
       }
-    });
-    if (Object.keys(classChoices).length > 0) {
-      nextCharacter = updateIdentity(nextCharacter, "classChoices", classChoices);
-    }
 
-    nextCharacter = { ...nextCharacter, proficiencyBonus: 2 };
+      const isNewChar = isNewLevel1Character(character);
 
-    onChange(nextCharacter);
-    onClassSelected?.(cls.id);
-    setSelectedClassId(null);
-  };
+      nextCharacter = updateIdentity(nextCharacter, "classAndLevel", `${cls.name} 1`);
+      
+      if (isNewChar) {
+        nextCharacter = updateHitDice(nextCharacter, "denomination", `d${cls.hitDie}`);
+        nextCharacter = updateHitDice(nextCharacter, "total", 1);
+        const conMod = nextCharacter.abilities?.constitution?.modifier ?? 0;
+        nextCharacter = updateHitPoints(nextCharacter, "maximum", cls.hitDie + conMod);
+        nextCharacter = updateHitPoints(nextCharacter, "current", cls.hitDie + conMod);
+        nextCharacter = { ...nextCharacter, proficiencyBonus: 2 };
+      } else {
+        // For existing characters, update hit die but preserve level/HP
+        nextCharacter = updateHitDice(nextCharacter, "denomination", `d${cls.hitDie}`);
+        // Note: HP recalculation for multiclass/level-up should be handled in a separate flow
+      }
 
-  const handleHomebrewCreate = (customClass: ClassDefinition) => {
-    setHomebrewClasses((prev) => [...prev, customClass]);
-    setShowHomebrew(false);
-    setSelectedClassId(customClass.id);
-  };
+      cls.proficiencies.savingThrows?.forEach((save) => {
+        nextCharacter = updateAbilitySavingThrow(nextCharacter, save as AbilityName, { proficient: true });
+      });
+
+      // Apply selected class feature choices
+      const classChoices: Record<string, string> = {};
+      Object.entries(selectedChoices).forEach(([field, value]) => {
+        if (value && value.trim() !== "") {
+          classChoices[field] = value;
+        }
+      });
+      if (Object.keys(classChoices).length > 0) {
+        nextCharacter = updateIdentity(nextCharacter, "classChoices", classChoices);
+      }
+
+      // Clear draft for this class since it's now applied
+      setDraftChoices((prev) => {
+        const next = { ...prev };
+        delete next[cls.id];
+        return next;
+      });
+
+      onChange(nextCharacter);
+      onClassSelected?.(cls.id);
+      setPreviewedClassId(null);
+    },
+    [previewedClassId, homebrewClasses, character, appliedClassId, onChange, onClassSelected]
+  );
+
+  const handleHomebrewCreate = useCallback(
+    (customClass: ClassDefinition) => {
+      setHomebrewClasses((prev) => [...prev, customClass]);
+      setShowHomebrew(false);
+      setPreviewedClassId(customClass.id);
+    },
+    []
+  );
 
   if (showHomebrew) {
     return <HomebrewClassForm onCreate={handleHomebrewCreate} onCancel={() => setShowHomebrew(false)} />;
   }
 
-  if (selectedClassId) {
-    const cls = getClassById(selectedClassId) ?? homebrewClasses.find((c) => c.id === selectedClassId);
+  if (previewedClassId) {
+    const cls = getClassById(previewedClassId) ?? homebrewClasses.find((c) => c.id === previewedClassId);
     if (!cls) return null;
     return (
       <ClassDetailPanel
         cls={cls}
+        initialChoices={draftChoices[previewedClassId] ?? {}}
         onApply={handleApplyClass}
-        onBack={() => setSelectedClassId(null)}
+        onBack={handleBack}
+        onChoicesChange={(choices) => updateDraftChoices(previewedClassId, choices)}
       />
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="text-center" role="heading" aria-level={2}>
+      <header className="text-center" role="heading" aria-level={2}>
         <h2 className="font-display text-2xl md:text-3xl font-bold">Choose Your Class</h2>
         <p className="mt-2 font-editorial text-base md:text-lg text-[var(--ink)] leading-relaxed max-w-2xl mx-auto">
-          Your class defines your capabilities, your role in the party, and how you&apos;ll grow.
-          Read each description and pick what sounds fun &mdash; you can customize the details afterward.
+          How do you want to play? Each class offers a distinct fantasy and playstyle.
         </p>
-        {currentClassId && (
+        {appliedClassId && (
           <p className="mt-4 font-sans text-sm text-[var(--muted)]">
-            Current class: <span className="font-medium capitalize">{currentClassId}</span>
+            Your class: <span className="font-medium capitalize text-[var(--foreground)]">{appliedClassId}</span>
+            {previewedClassId && previewedClassId !== appliedClassId && (
+              <> &mdash; previewing <span className="font-medium capitalize">{previewedClassId}</span></>
+            )}
           </p>
         )}
+      </header>
+
+      <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }} role="list" aria-label="Official classes">
+        {CLASS_CATALOG.map((cls) => {
+          const isApplied = appliedClassId === cls.id;
+          const isPreviewed = previewedClassId === cls.id;
+          const refKey = cls.id;
+          return (
+            <ClassCard
+              key={cls.id}
+              ref={(el) => {
+                if (el) cardRefs.current[refKey] = el;
+                else delete cardRefs.current[refKey];
+              }}
+              cls={cls}
+              state={isApplied ? "applied" : isPreviewed ? "previewed" : "default"}
+              onSelect={() => handleClassSelect(cls.id)}
+              onFocus={() => {
+                lastFocusedCard.current = cls.id;
+              }}
+            />
+          );
+        })}
       </div>
 
-      <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}>
-        {CLASS_CATALOG.map((cls) => (
-          <ClassCard
-            key={cls.id}
-            cls={cls}
-            isSelected={selectedClassId === cls.id}
-            onSelect={() => handleClassSelect(cls.id)}
-          />
-        ))}
-        <button
-          type="button"
-          onClick={() => setShowHomebrew(true)}
-          className="relative rounded-xl border-2 border-dashed border-[var(--border)] bg-[var(--surface)] p-5 transition hover:border-[var(--accent)] hover:bg-[var(--parchment)] flex flex-col items-center justify-center min-h-[280px]"
-        >
-          <div className="flex-shrink-0 grid size-14 place-items-center rounded-lg border border-dashed border-[var(--border)] bg-[var(--background)] text-[var(--muted)] mb-3">
-            <Icons.PlusCircle className="size-7" weight="regular" />
-          </div>
-          <h3 className="font-display text-xl font-bold text-center">Homebrew</h3>
-          <p className="mt-2 font-editorial text-sm text-[var(--muted)] text-center max-w-xs">
-            Create a custom class with your Dungeon Master.
-          </p>
-        </button>
-      </div>
+      {/* Homebrew as secondary action */}
+      <button
+        type="button"
+        onClick={() => setShowHomebrew(true)}
+        className="w-full md:max-w-xl mx-auto rounded-xl border-2 border-dashed border-[var(--border)] bg-[var(--surface)] p-6 transition hover:border-[var(--accent)] hover:bg-[var(--parchment)] flex flex-col items-center justify-center"
+      >
+        <div className="flex-shrink-0 grid size-14 place-items-center rounded-lg border border-dashed border-[var(--border)] bg-[var(--background)] text-[var(--muted)] mb-3">
+          <Icons.PlusCircle className="size-7" weight="regular" />
+        </div>
+        <h3 className="font-display text-xl font-bold text-center">Create Homebrew Class</h3>
+        <p className="mt-2 font-editorial text-sm text-[var(--muted)] text-center max-w-xs">
+          Define a custom class with your Dungeon Master.
+        </p>
+      </button>
     </div>
   );
 }
