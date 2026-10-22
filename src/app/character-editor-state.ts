@@ -179,6 +179,14 @@ export function updateSkill(
   };
 }
 
+export function updateSkillProficiency(
+  character: CharacterSheet,
+  skill: SkillName,
+  proficient: boolean,
+): CharacterSheet {
+  return updateSkill(character, skill, { proficient });
+}
+
 export function addAttack(character: CharacterSheet): CharacterSheet {
   const attacks = character.attacks ?? [];
   if (attacks.length >= ATTACK_PDF_CAPACITY) return character;

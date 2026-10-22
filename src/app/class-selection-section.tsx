@@ -75,6 +75,16 @@ const CLASS_COMPLEXITY: Record<string, { label: string; description: string }> =
   wizard: { label: "Complex", description: "Spellbook, prepared spells, arcane recovery" },
 };
 
+// Ability colors for visual consistency with Design Bible
+const ABILITY_COLORS: Record<string, string> = {
+  strength: "accent",
+  dexterity: "moss",
+  constitution: "gold",
+  intelligence: "arcane",
+  wisdom: "moss",
+  charisma: "arcane",
+};
+
 // ---- Helpers ----
 
 type AbilityName = "strength" | "dexterity" | "constitution" | "intelligence" | "wisdom" | "charisma";
@@ -437,18 +447,36 @@ function ClassDetailPanel({
           <div className="space-y-6 pt-4 border-t border-[var(--border)] animate-in slide-down duration-200">
             <section>
               <h3 className="font-display text-lg font-bold mb-3">Playstyle and strengths</h3>
+              <p className="font-editorial text-sm text-[var(--ink)] leading-relaxed mb-4">
+                The {cls.name.toLowerCase()} excels at {cls.proficiencies.savingThrows?.map(s => s.toLowerCase()).join(" and ") ?? "durability and offense"}, using {cls.primaryAbilities.map(a => a.toLowerCase()).join(" and ")} as their primary abilities.
+              </p>
               <dl className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-sans text-sm border-y border-[var(--border)] py-4">
                 <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Hit Die</dt>
-                <dd className="font-mono tabular-nums text-xl">d{cls.hitDie}</dd>
+                <dd className="font-mono tabular-nums text-xl text-[var(--accent)]">d{cls.hitDie}</dd>
                 <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Primary Abilities</dt>
-                <dd className="font-medium sm:col-span-3">{cls.primaryAbilities.map((a) => a.toUpperCase()).join(" / ")}</dd>
+                <dd className="font-medium sm:col-span-3 text-[var(--ink)] flex flex-wrap gap-1">
+                  {cls.primaryAbilities.map((a) => (
+                    <span key={a} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide" style={{ backgroundColor: `var(--${ABILITY_COLORS[a]}15)`, color: `var(--${ABILITY_COLORS[a]})` }}>
+                      {a.toUpperCase()}
+                    </span>
+                  ))}
+                </dd>
                 <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Saving Throws</dt>
-                <dd className="font-medium sm:col-span-3">{cls.proficiencies.savingThrows?.map((s) => s.toUpperCase()).join(", ") ?? "&mdash;"}</dd>
+                <dd className="font-medium sm:col-span-3 text-[var(--ink)] flex flex-wrap gap-1">
+                  {cls.proficiencies.savingThrows?.map((s) => (
+                    <span key={s} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide" style={{ backgroundColor: `var(--${ABILITY_COLORS[s.toLowerCase()]}15)`, color: `var(--${ABILITY_COLORS[s.toLowerCase()]})` }}>
+                      {s.toUpperCase()}
+                    </span>
+                  )) ?? "&mdash;"}
+                </dd>
                 {cls.spellcasting && (
                   <>
                     <dt className="font-bold uppercase tracking-wide text-[var(--muted)]">Spellcasting</dt>
-                    <dd className="font-medium sm:col-span-3">
-                      {cls.spellcasting.ability.toUpperCase()} &mdash; {cls.spellcasting.progression["1"]?.cantrips ?? 0} cantrips, {cls.spellcasting.progression["1"]?.slots?.[1] ?? 0} level-1 slot(s)
+                    <dd className="font-medium sm:col-span-3 text-[var(--ink)]">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide" style={{ backgroundColor: `var(--${ABILITY_COLORS[cls.spellcasting.ability.toLowerCase()]}15)`, color: `var(--${ABILITY_COLORS[cls.spellcasting.ability.toLowerCase()]})` }}>
+                        {cls.spellcasting.ability.toUpperCase()}
+                      </span>
+                      &mdash; {cls.spellcasting.progression["1"]?.cantrips ?? 0} cantrips, {cls.spellcasting.progression["1"]?.slots?.[1] ?? 0} level-1 slot(s)
                     </dd>
                   </>
                 )}
@@ -470,7 +498,7 @@ function ClassDetailPanel({
                     <dd className="font-sans text-sm text-[var(--ink)] leading-relaxed">{cls.proficiencies.weapons.join(", ")}</dd>
                   </div>
                 )}
-                {cls.proficiencies.tools?.length && (
+                {cls.proficiencies.tools != null && cls.proficiencies.tools.length > 0 && (
                   <div className="rounded-lg border border-[var(--border)] p-5 bg-[var(--parchment)]">
                     <dt className="font-bold uppercase tracking-wide text-[var(--muted)] text-xs mb-2">Tools</dt>
                     <dd className="font-sans text-sm text-[var(--ink)] leading-relaxed">{cls.proficiencies.tools.map((t) => t.replace(/([A-Z])/g, " $1").trim()).join(", ")}</dd>
