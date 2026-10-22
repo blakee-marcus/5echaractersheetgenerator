@@ -414,14 +414,6 @@ export function GuidedCharacterForm({
             }
           />
           <TextField
-            id="identity-race"
-            label="Species / race"
-            value={character.identity?.race}
-            onChange={(value) =>
-              onChange(updateIdentity(character, "race", value))
-            }
-          />
-          <TextField
             id="identity-background"
             label="Background"
             value={character.identity?.background}

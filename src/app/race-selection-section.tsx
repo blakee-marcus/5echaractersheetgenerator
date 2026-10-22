@@ -10,7 +10,7 @@ import {
 } from "../domain/race-catalog";
 import type { CharacterSheet } from "../domain/character-sheet";
 import * as Icons from "./icons";
-import { secondaryButtonClass } from "./character-form-controls";
+import { inputClass, secondaryButtonClass } from "./character-form-controls";
 import { updateIdentity } from "./character-editor-state";
 
 export interface RaceSelectionProps {
@@ -596,6 +596,7 @@ export function RaceSelection({
 }: RaceSelectionProps) {
   const appliedRaceId = getAppliedRaceId(character);
   const [previewedRaceId, setPreviewedRaceId] = useState<string | null>(null);
+  const [isCustomLineage, setIsCustomLineage] = useState(false);
   const cardRefs = useRef<Record<string, HTMLButtonElement>>({});
   const lastFocusedCard = useRef<string | null>(null);
 
@@ -641,6 +642,21 @@ export function RaceSelection({
     },
     [previewedRaceId, appliedRaceId, character, onChange, onRaceSelected],
   );
+
+  if (isCustomLineage) {
+    return (
+      <CustomLineagePanel
+        character={character}
+        onChange={onChange}
+        onBack={() => {
+          setIsCustomLineage(false);
+          requestAnimationFrame(() => {
+            cardRefs.current["custom-lineage"]?.focus();
+          });
+        }}
+      />
+    );
+  }
 
   if (previewedRaceId) {
     const race = getRaceById(previewedRaceId);
@@ -703,11 +719,105 @@ export function RaceSelection({
         })}
       </div>
 
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
-        <p className="font-sans text-sm text-[var(--muted)]">
-          If your table uses a custom or homebrew lineage, enter it directly in the{" "}
-          <strong>Identity</strong> section. The catalog covers the standard 2014 SRD races.
+      <button
+        type="button"
+        aria-label="Create Homebrew Race"
+        onClick={() => setIsCustomLineage(true)}
+        className="w-full md:max-w-xl mx-auto rounded-xl border-2 border-dashed border-[var(--border)] bg-[var(--surface)] p-6 transition hover:border-[var(--accent)] hover:bg-[var(--parchment)] flex flex-col items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
+      >
+        <div className="flex-shrink-0 grid size-14 place-items-center rounded-lg border border-dashed border-[var(--border)] bg-[var(--background)] text-[var(--muted)] mb-3">
+          <Icons.PlusCircle className="size-7" weight="regular" />
+        </div>
+        <h3 className="font-display text-xl font-bold text-center">Create Homebrew Race</h3>
+        <p className="mt-2 font-editorial text-sm text-[var(--muted)] text-center max-w-xs">
+          Set a custom lineage without applying catalog traits.
         </p>
+      </button>
+    </div>
+  );
+}
+
+function CustomLineagePanel({
+  character,
+  onChange,
+  onBack,
+}: {
+  character: CharacterSheet;
+  onChange: (character: CharacterSheet) => void;
+  onBack: () => void;
+}) {
+  const [value, setValue] = useState(character.identity?.race ?? "");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const handleApply = useCallback(() => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+
+    let next = character;
+
+    // If a catalog race was previously applied, strip its auto-generated effects
+    // so the character does not keep stale racial traits, but leave manual
+    // languages, manual traits text, and any manually set speed untouched.
+    const appliedRaceId = getAppliedRaceId(character);
+    if (appliedRaceId) {
+      next = clearPreviousRaceEffects(next, appliedRaceId);
+    }
+
+    next = updateIdentity(next, "race", trimmed);
+    onChange(next);
+    onBack();
+  }, [character, value, onChange, onBack]);
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <button
+        type="button"
+        onClick={onBack}
+        className="inline-flex items-center gap-2 font-sans text-sm font-bold text-[var(--accent)] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
+      >
+        <Icons.ArrowLeft className="size-4" weight="regular" />
+        Back to races
+      </button>
+
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 md:p-8">
+        <h2 className="font-display text-2xl md:text-3xl font-bold">Custom Lineage</h2>
+        <p className="mt-2 font-editorial text-base text-[var(--ink)] leading-relaxed">
+          Enter the exact name for your homebrew or table-specific lineage. No catalog traits, languages, or speed will be applied.
+        </p>
+
+        <div className="mt-6">
+          <label className="block font-sans text-sm font-semibold text-[var(--foreground)]" htmlFor="custom-lineage-name">
+            Lineage name
+          </label>
+          <input
+            ref={inputRef}
+            id="custom-lineage-name"
+            type="text"
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            className={`${inputClass} mt-1`}
+            placeholder="e.g. Aarakocra"
+          />
+        </div>
+
+        <div className="mt-6 flex items-center justify-end gap-3 border-t border-[var(--border)] pt-4">
+          <button type="button" onClick={onBack} className={secondaryButtonClass}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleApply}
+            disabled={!value.trim()}
+            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--accent)] bg-[var(--accent)] px-6 py-2.5 font-sans text-sm font-extrabold text-white shadow-[0_6px_16px_rgb(118_37_31/0.18)] transition hover:border-[var(--accent-strong)] hover:bg-[var(--accent-strong)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Icons.Check className="size-4 mr-2" weight="regular" />
+            Confirm {value.trim() || "Custom Lineage"}
+          </button>
+        </div>
       </div>
     </div>
   );
